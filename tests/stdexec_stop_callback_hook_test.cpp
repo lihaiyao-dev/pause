@@ -1,3 +1,19 @@
+﻿/* 测试项目：stdexec_stop_callback_hook_test
+ * 目的: 在固定 stdexec stop_token 测试副本的真实内部窗口强制确定性交错。
+ * 测试项:
+ * 1. callback 已注册但构造尚未返回时请求停止, 仅记录 CancelRequested。
+ * 2. callback 已选中但尚未进入时完成构造, 分别验证 Open 与 Waiting 裁决。
+ * 3. Resume 在 callback 选中后先夺得 value, 注销真实进入等待循环再释放 callback。
+ * 4. start 尾部尚未返回时, value 或 stopped 的完成回调同步销毁 operation。
+ * 5. completion 尾部仍运行时, 异线程析构等待 callback 结束再完成销毁。
+ * 预期: 构造期不提前 reset/完成, 注销在所需窗口等待, 只交付一次正确终态;
+ *       已销毁 operation 的 start/completion 尾部仅访问外部状态, 不产生等待环。
+ * 入口: 配置 PAUSE_BUILD_DESIGN_TESTS=ON, CTest 名称 stdexec_stop_callback_hook_test。
+ *       CLI --iterations N, 默认 100, 范围 1..100000, 每轮 7 个确定性交错。
+ *       tests/instrument_stop_token.cmake 生成专用 pause_test_stop_token.hpp, 仅本程序使用。
+ * 边界: 验证依赖插桩副本和简化 raw operation 协议, 不含 pause.hpp;
+ *       不包含真实 Pause record、侵入式链表、scheduler 或公共 sender。
+ */
 #include <atomic>
 #include <charconv>
 #include <cstdlib>

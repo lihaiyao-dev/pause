@@ -7,13 +7,19 @@ include(FetchContent)
 set(STDEXEC_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 set(STDEXEC_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 
+set(PAUSE_STDEXEC_GIT_TAG "f0e8ae6fdc6c188389b146bb854b80d399724b04"
+    CACHE STRING "stdexec revision (must satisfy Pause's configure-time compatibility check)")
+
 FetchContent_Declare(
     stdexec
     GIT_REPOSITORY https://github.com/NVIDIA/stdexec.git
-    GIT_TAG f0e8ae6fdc6c188389b146bb854b80d399724b04
+    GIT_TAG "${PAUSE_STDEXEC_GIT_TAG}"
     GIT_PROGRESS TRUE
 )
 FetchContent_MakeAvailable(stdexec)
+
+include(cmake/CheckPauseStdexec.cmake)
+pause_check_stdexec()
 
 add_library(pause INTERFACE)
 add_library(pause::pause ALIAS pause)
@@ -43,6 +49,7 @@ if(PAUSE_BUILD_TOOLCHAIN_SMOKE_TEST)
 endif()
 
 option(PAUSE_BUILD_TESTS "Build the real Pause implementation acceptance tests" ON)
+option(PAUSE_BUILD_EXAMPLES "Build runnable Pause application examples" OFF)
 
 if(PAUSE_BUILD_TESTS)
     enable_testing()
@@ -50,12 +57,15 @@ if(PAUSE_BUILD_TESTS)
     foreach(test_name IN ITEMS pause_integration_test pause_sender_test
                                pause_sender_hook_test pause_sender_death_test pause_resource_test
                                pause_task_lifetime_test pause_extreme_test pause_batch_extreme_test
-                               pause_transition_extreme_test)
+                               pause_transition_extreme_test pause_concurrency_stress_test
+                               pause_exception_matrix_test pause_notification_matrix_test
+                               pause_contract_death_test pause_outer_lifetime_test pause_host_failure_test)
         add_executable(${test_name} tests/${test_name}.cpp)
         target_link_libraries(${test_name} PRIVATE pause::pause)
         add_test(NAME ${test_name} COMMAND ${test_name})
         set_tests_properties(${test_name} PROPERTIES TIMEOUT 120)
     endforeach()
+    target_compile_definitions(pause_contract_death_test PRIVATE NDEBUG)
     target_include_directories(pause_sender_hook_test BEFORE PRIVATE "${pause_instrumented_include}")
     if(PAUSE_BUILD_TOOLCHAIN_SMOKE_TEST)
         add_test(NAME pause_header_compile COMMAND pause_header_compile)
@@ -91,6 +101,43 @@ if(PAUSE_BUILD_TESTS)
             "-DOUTPUT_DIRECTORY=${CMAKE_CURRENT_BINARY_DIR}/pause-environment-check/$<CONFIG>"
             -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/check_pause_environment.cmake")
     set_tests_properties(pause_environment_compile PROPERTIES TIMEOUT 120)
+endif()
+
+if(PAUSE_BUILD_EXAMPLES)
+    add_executable(pause_simple_workflow examples/simple_workflow.cpp)
+    add_executable(pause_workflows examples/pause_workflows.cpp)
+    add_executable(pause_independent_jobs examples/independent_jobs.cpp)
+    add_executable(pause_controlled_workflow examples/controlled_workflow.cpp)
+    foreach(example IN ITEMS pause_simple_workflow pause_workflows pause_independent_jobs pause_controlled_workflow)
+        target_link_libraries(${example} PRIVATE pause::pause)
+        if(MSVC)
+            target_compile_options(${example} PRIVATE /utf-8)
+        endif()
+    endforeach()
+    if(PAUSE_BUILD_TESTS)
+        add_test(NAME pause_example_simple COMMAND pause_simple_workflow)
+        set_tests_properties(pause_example_simple PROPERTIES TIMEOUT 30)
+        foreach(scenario IN ITEMS step continue skip-optional cancel work-error control-error)
+            add_test(NAME pause_example_controlled_${scenario} COMMAND pause_controlled_workflow ${scenario})
+            set_tests_properties(pause_example_controlled_${scenario} PROPERTIES TIMEOUT 30)
+        endforeach()
+        foreach(scenario IN ITEMS pipeline single-step nested sender-pipeline bulk parallel race
+                                  cancel prestop error stopped
+                                  optional optional-value optional-error)
+            add_test(NAME pause_example_${scenario} COMMAND pause_workflows ${scenario})
+            set_tests_properties(pause_example_${scenario} PROPERTIES TIMEOUT 30)
+        endforeach()
+        add_test(NAME pause_example_independent COMMAND pause_independent_jobs)
+        add_test(NAME pause_example_dynamic2 COMMAND pause_independent_jobs --dynamic 2)
+        add_test(NAME pause_example_dynamic3 COMMAND pause_independent_jobs --dynamic 3)
+        add_test(NAME pause_example_dynamic8 COMMAND pause_independent_jobs --dynamic 8)
+        add_test(NAME pause_example_dynamic32 COMMAND pause_independent_jobs --dynamic 32)
+        add_test(NAME pause_example_cancel_all COMMAND pause_independent_jobs --cancel-all)
+        add_test(NAME pause_example_controller_error COMMAND pause_independent_jobs --controller-error)
+        set_tests_properties(pause_example_independent pause_example_dynamic2 pause_example_dynamic3
+            pause_example_dynamic8 pause_example_dynamic32 pause_example_cancel_all
+            pause_example_controller_error PROPERTIES TIMEOUT 30)
+    endif()
 endif()
 
 option(PAUSE_BUILD_DESIGN_TESTS

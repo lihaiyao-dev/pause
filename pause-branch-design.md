@@ -4,6 +4,8 @@
 
 本文定义公共 API、暂停责任、并发完成协议、执行器恢复和关键伪代码。`pause.hpp` 已按本基线实现；实际运行结果、覆盖边界及 MSVC Debug 标准库内部终止边界见[实现与验收记录](tests/pause-implementation-validation-2026-09-23.md)。本文的设计推理不替代运行证据。
 
+2026-09-24：公共 C++ 命名空间由 `pause` 改为 `coop_pause`，避免与 POSIX 全局函数 `::pause()` 冲突；不提供旧名称别名。调用方需同步改名并重新编译，文件名与 CMake 目标不变；暂停状态机及运行语义不变。
+
 2026-09-23 已采用 `stdexec::task`、公开 `.affine()` 宿主适配及经验证的 scheduler 接入方案。首版具体后端为固定依赖的 `stdexec::run_loop::scheduler` 与默认 allocator；第 3.4、6.5 节规定接入条件和适配边界。组件可行性测试不等于生产 Pause 已实现。
 
 Pause 是 `stdexec + coroutine` 工作流中的协作式暂停屏障：
@@ -64,7 +66,7 @@ Source 不拥有线程、任务队列或 coroutine frame。拥有者保证 Sourc
 ### 3.1 值类型与 snapshot
 
 ```cpp
-namespace pause {
+namespace coop_pause {
 
 enum class AdvanceMode { Continuous, SingleStep };
 enum class PauseOrigin { ControlRequest, SingleStep };
@@ -105,7 +107,7 @@ struct PauseSnapshot {
 using StateChangedNotifier =
     std::move_only_function<void() noexcept>;
 
-} // namespace pause
+} // namespace coop_pause
 ```
 
 snapshot 在同一次状态锁临界区复制，是固定大小的拥有型值：
@@ -262,6 +264,14 @@ using RawCompletionSignatures = stdexec::completion_signatures<
 ```
 
 公开 `suspend_point()` 消费上述标签，其正常完成仍为无参数 `set_value()`。完整 completion signatures 必须由组合后的 sender 推导：等待后恢复的调度可以产生 scheduler 的 error/stopped，`read_env` / `let_value` 等组合也可能贡献 error 通道。本版保守保留内部组合的完整签名，不增加 error 类型过滤；这不表示运行时会交付每一种签名。第 6.3 节的最外层接收器对内部 error 调用 `std::terminate()`，不会向公开 receiver 提交 `set_error`；外包 `let_error` 不能恢复这些内部错误。stopped 仍正常交付，不能因终止策略而删除其签名。
+
+### 3.5 组件标准化迁移边界
+
+2026-09-24 的组件迁移以保持当前行为为前提，参照 C++ 工作草案提交 `e908596f`（2026-09-21）的 sender/receiver 协议；固定 stdexec 提交及后端不变。此次只将 raw sender/operation 的协议样板改为草案接口：`RawSuspendOperation` 声明 `operation_state_concept = stdexec::operation_state_tag`，`RawSuspendSender` 通过静态 `consteval get_completion_signatures<Self, Env...>()` 返回第 3.4 节的三个签名，不再依赖旧式成员别名查询。公共 API、完成通道、状态机、取消和调度次数不变。
+
+`exec::completion_behavior` 仍是固定 stdexec 的公开扩展；该草案没有能够完整替代其查询表现的标准属性，因此保留第 6.5 节的声明。`.affine()` 成员定制已有草案接口依据，同样保留。此次不扩大 token、scheduler、TaskEnv 或 allocator 的支持范围，也不移除第 9 节针对当前 task 生命周期的包装；组件同名或已有标准接口，不足以证明不同实现的运行语义等价。
+
+这些调整减少对 stdexec 兼容接口的依赖，不表示已经迁入原生 `std::execution` 后端。将来切换标准库时，仍需核对名称归属、调度取消、资源失败与 task frame 释放顺序，并复验当前行为；没有等价标准部件的部分继续保留。
 
 ## 4. 责任与暂停门
 

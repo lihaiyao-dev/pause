@@ -1,1 +1,57 @@
+# Build trees and root-level CMake/Ninja output.
 /build/
+/cmake-build-*/
+/out/
+/CMakeFiles/
+/CMakeCache.txt
+/cmake_install.cmake
+/CTestTestfile.cmake
+/Makefile
+/build.ninja
+/.ninja_deps
+/.ninja_log
+/CMakeUserPresets.json
+# Hand-authored compilation databases under tests are fixtures and stay tracked.
+/compile_commands.json
+
+# Compiled objects, libraries, executables and debug data.
+*.o
+*.obj
+*.pch
+*.gch
+*.exe
+*.dll
+*.so
+*.so.*
+*.dylib
+*.a
+*.lib
+*.exp
+*.pdb
+*.ilk
+*.idb
+*.ipdb
+*.iobj
+*.dmp
+
+# Editor/language-server caches; keep project configuration.
+/.cache/
+/.vs/
+/.clice/*
+!/.clice/config.toml
+/.vscode/ipch/
+/.vscode/*.db
+/.vscode/*.db-*
+__pycache__/
+*.py[cod]
+
+# Runtime logs, temporary files and OS metadata.
+*.log
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+Desktop.ini

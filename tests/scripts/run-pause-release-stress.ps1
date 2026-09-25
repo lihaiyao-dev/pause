@@ -1,10 +1,27 @@
+﻿<#
+测试项目：当前 MSVC Release 二进制的大基数回归驱动。
+覆盖 Pause 场景、异常/死亡测试、资源/生命周期/并发矩阵及 stdexec/模型独立测试；
+具体断言见同名 tests/*.cpp。先验证 /O2 /DNDEBUG 与源文件时间戳，再逐进程执行。
+-Iterations 控制完整用例重复，-OrdinaryIterations/-ApiIterations 可单独加压；
+-DeepIterations 重复固定深度，不增加递归层数；-TerminationIterations 控制死亡子进程。
+要求先运行 scripts/msvc-cmake.cmd test release；支持 -OnlyTest 选一项。
+预期测试退出 0 且不超时，记录命令、哈希、stdout/stderr 和 JSON 到 -OutputDirectory。
+默认运行量很大；入口冒烟可用 -OnlyTest pause_sender_test -Iterations 2。
+#>
 param(
     [string]$OutputDirectory = 'build/pause-release-extreme',
     [ValidateRange(1,1000000)][int]$Iterations = 100000,
+    [ValidateRange(0,1000000)][int]$OrdinaryIterations = 0,
+    [ValidateRange(0,1000000)][int]$ApiIterations = 0,
+    [ValidateRange(1,1000000)][int]$DeepIterations = 1,
+    [ValidateRange(1,1000000)][int]$TerminationIterations = 1,
     [ValidateRange(1,86400)][int]$TimeoutSeconds = 14400,
     [ValidateSet('pause_integration_test','pause_sender_test','pause_sender_hook_test',
-        'pause_sender_death_test','pause_resource_test','pause_task_lifetime_test',
-        'pause_extreme_test','pause_batch_extreme_test','pause_transition_extreme_test','pause_state_model_test',
+        'pause_sender_death_test','pause_contract_death_test','pause_resource_test','pause_task_lifetime_test',
+        'pause_extreme_test','pause_batch_extreme_test','pause_transition_extreme_test',
+        'pause_concurrency_stress_test','pause_exception_matrix_test','pause_notification_matrix_test',
+        'pause_outer_lifetime_test','pause_host_failure_test',
+        'pause_state_model_test',
         'stdexec_stop_callback_test','stdexec_stop_callback_hook_test',
         'stdexec_callback_affine_lifetime_test','stdexec_task_lifetime_test',
         'stdexec_standard_task_api_test','stdexec_standard_task_lifetime_test',
@@ -15,7 +32,7 @@ param(
 # Build first: scripts/msvc-cmake.cmd test release
 # No sanitizer or extra assertion flags: execute the actual Release preset.
 $ErrorActionPreference = 'Stop'
-$pauseRoot = (Resolve-Path -LiteralPath "$PSScriptRoot/..").Path
+$pauseRoot = (Resolve-Path -LiteralPath "$PSScriptRoot/../..").Path
 Set-Location -LiteralPath $pauseRoot
 $pauseBuild = Join-Path $pauseRoot 'build/msvc-release'
 $pauseCache = Get-Content -LiteralPath "$pauseBuild/CMakeCache.txt" -Raw
@@ -31,7 +48,10 @@ New-Item -ItemType Directory -Path $OutputDirectory -Force | Out-Null
 $pauseOutput = (Resolve-Path -LiteralPath $OutputDirectory).Path
 $pauseTests = @('pause_integration_test','pause_sender_test','pause_sender_hook_test',
     'pause_resource_test','pause_task_lifetime_test','pause_extreme_test',
-    'pause_batch_extreme_test','pause_transition_extreme_test','pause_sender_death_test','pause_state_model_test',
+    'pause_batch_extreme_test','pause_transition_extreme_test','pause_concurrency_stress_test',
+    'pause_exception_matrix_test','pause_notification_matrix_test',
+    'pause_outer_lifetime_test','pause_host_failure_test',
+    'pause_sender_death_test','pause_contract_death_test','pause_state_model_test',
     'stdexec_stop_callback_test','stdexec_stop_callback_hook_test',
     'stdexec_callback_affine_lifetime_test','stdexec_task_lifetime_test',
     'stdexec_standard_task_api_test','stdexec_standard_task_lifetime_test',
@@ -64,8 +84,12 @@ foreach ($testName in $pauseTests) {
     if ($testName -eq 'pause_sender_hook_test') {
         $paths.instrumented_stop_token = Join-Path $pauseBuild 'pause-instrumented-stdexec/stdexec/stop_token.hpp'
     }
+    if ($testName -eq 'pause_host_failure_test') {
+        $paths.example_support = Join-Path $pauseRoot 'examples/example_support.hpp'
+    }
     $inputs = @($source, $paths.pinned_stop_token)
     if ($paths.Contains('instrumented_stop_token')) { $inputs += $paths.instrumented_stop_token }
+    if ($paths.Contains('example_support')) { $inputs += $paths.example_support }
     if ($testName -notlike 'stdexec_*' -and $testName -ne 'pause_state_model_test') {
         $inputs += $paths.header
     }
@@ -78,7 +102,15 @@ foreach ($testName in $pauseTests) {
         }
     }
     $arguments = switch ($testName) {
-        'pause_sender_death_test' { @() }
+        { $_ -in @('pause_sender_death_test','pause_contract_death_test') } { @('--iterations',"$TerminationIterations") }
+        'pause_integration_test' {
+            @('--iterations',"$Iterations",'--deep-iterations',"$DeepIterations")
+            if ($ApiIterations) { @('--api-iterations',"$ApiIterations") }
+        }
+        { $_ -in @('pause_sender_test','pause_exception_matrix_test','pause_outer_lifetime_test') } {
+            @('--iterations',"$Iterations")
+            if ($OrdinaryIterations) { @('--ordinary-iterations',"$OrdinaryIterations") }
+        }
         'stdexec_deep_chain_test' { @() }
         'pause_state_model_test' { @('--depth','10','--random-steps',"$Iterations",'--seeds','20','--max-records','32') }
         default { @('--iterations',"$Iterations") }

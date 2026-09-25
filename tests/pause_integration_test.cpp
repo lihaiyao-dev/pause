@@ -1,3 +1,28 @@
+﻿/* 测试项目：pause_integration_test
+ * 性质: 基于真实 Pause 公共 API、stdexec::task 和 run_loop 的集成测试.
+ * 测试项目:
+ * - 编译期接口约束: Source 不可复制/移动, Branch 仅可移动构造, 控制及挂起接口限制左值调用.
+ * - API 与空屏障: 验证未创建/重复创建根、重复暂停、非法分叉及旧 epoch 的错误码,
+ *   错误调用不提交状态; 空屏障单步产生新 epoch, Continuous 恢复 Open.
+ * - 连续/单步执行四个暂停点: 业务计数、step_round、暂停来源和恢复线程符合预期.
+ * - 到达或退出收敛: 未到达分支退休后屏障由 Collecting 收敛为 Paused.
+ * - 父分支重入与复用: 直接子分支退休后父分支可重入及再次分叉; 加入空暂停不更换 epoch.
+ * - 两个执行资源与独立取消: 各自回原 run_loop, 取消一个分支不取消另一个分支.
+ * - 外部 stopped/error 与 optional 宿主: 检查 when_all 的取消传播、错误内容、业务执行次数,
+ *   以及 stopped 转 optional 后由宿主及时退休子帧才能使屏障收敛.
+ * - 保留 stopped 帧的反例: 直接转换仍保留参与责任时应停在 Collecting; 最后用宿主取消收尾.
+ * - 15 节点递归树: 连续/单步完成 15 次进入和 7 次父重入; 叶节点取消阻止后续业务.
+ * - 同一 task 跨两个 Source: 分别暂停/恢复, 两份状态与业务进度互不混淆.
+ * - 四个恢复控制器与四个取消者竞争: 仅一个 resume 成功, 每个接收器恰好完成一次,
+ *   并发观察者读取一致快照且 revision 单调不减.
+ * - 带固定种子的 fork/pause、父重入/resume 竞争: 检查胜出次序对应的计数与最终状态.
+ * - 深度 32/64 的链: 连续/单步分别经过 65/129 个暂停点, 最终参与计数归零.
+ * 运行: ctest --test-dir <build> -R '^pause_integration_test$' --output-on-failure.
+ * CLI: --iterations N (默认 100), --api-iterations N (默认跟随 iterations),
+ *      --deep-iterations N (默认 1), --seed N (默认 0x3f09b7a561d82c45).
+ * 次数范围 1..1000000; seed 非零. 通过增加次数施压, 不增加已固定的递归深度.
+ * 边界: 本程序不证明任意深度栈安全; when_all 外层取消完成的线程不属于 Pause 直接 await 亲和承诺.
+ */
 #include "pause.hpp"
 
 #include <stdexec/execution.hpp>
@@ -38,14 +63,14 @@ std::uint64_t race_stopped_results = 0;
 }
 #define CHECK(expression) ((expression) ? (void)0 : fail(#expression, __LINE__))
 
-using pause::AdvanceMode;
-using pause::GatePhase;
-using pause::PauseBranch;
-using pause::PauseEpoch;
-using pause::PauseError;
-using pause::PauseOrigin;
-using pause::PauseSnapshot;
-using pause::PauseSource;
+using coop_pause::AdvanceMode;
+using coop_pause::GatePhase;
+using coop_pause::PauseBranch;
+using coop_pause::PauseEpoch;
+using coop_pause::PauseError;
+using coop_pause::PauseOrigin;
+using coop_pause::PauseSnapshot;
+using coop_pause::PauseSource;
 
 template<class T>
 concept CanRequestPause = requires(T&& source) {
@@ -910,7 +935,7 @@ void test_deep_chain(int depth, bool single_step)
 
 int main(int argc, char** argv)
 {
-    int iterations = 100;
+    int iterations = 100, api_iterations = 0, deep_iterations = 1;
     std::uint64_t seed = UINT64_C(0x3f09b7a561d82c45);
     CHECK(argc % 2 == 1);
     for (int index = 1; index < argc; index += 2) {
@@ -921,25 +946,45 @@ int main(int argc, char** argv)
         if (std::strcmp(argv[index], "--iterations") == 0) {
             CHECK(parsed <= 1000000);
             iterations = static_cast<int>(parsed);
+        } else if (std::strcmp(argv[index], "--api-iterations") == 0) {
+            CHECK(parsed <= 1000000);
+            api_iterations = static_cast<int>(parsed);
+        } else if (std::strcmp(argv[index], "--deep-iterations") == 0) {
+            CHECK(parsed <= 1000000);
+            deep_iterations = static_cast<int>(parsed);
         } else {
             CHECK(std::strcmp(argv[index], "--seed") == 0);
             seed = parsed;
         }
     }
     Random random{seed};
+    if (api_iterations == 0) api_iterations = iterations;
     current_seed = seed;
     current_case = "deep_chain";
     for (int depth : {32, 64}) {
-        test_deep_chain(depth, false);
-        test_deep_chain(depth, true);
+        for (bool step : {false, true}) {
+            for (int iteration = 0; iteration != deep_iterations; ++iteration) {
+                current_iteration = iteration;
+                test_deep_chain(depth, step);
+            }
+            std::printf("PASS integration=deep-chain depth=%d mode=%s complete_scopes=%d\n",
+                        depth, step ? "single-step" : "continuous", deep_iterations);
+            std::fflush(stdout);
+        }
     }
+    current_case = "api_empty";
+    for (int iteration = 0; iteration != api_iterations; ++iteration) {
+        current_iteration = iteration;
+        test_api_and_empty_gate();
+    }
+    std::printf("PASS integration=api-empty complete_scopes=%d\n", api_iterations);
+    std::fflush(stdout);
     for (int iteration = 0; iteration != iterations; ++iteration) {
         current_iteration = iteration;
         const auto run_case = [](const char* name, auto test) {
             current_case = name;
             test();
         };
-        run_case("api_empty", test_api_and_empty_gate);
         run_case("continuous", [] { test_open_and_single_step(false); });
         run_case("single_step", [] { test_open_and_single_step(true); });
         run_case("arrive_or_retire", test_all_arrive_or_retire);
@@ -960,8 +1005,12 @@ int main(int argc, char** argv)
         run_case("random_fork_pause", [&] { test_random_fork_pause(random); });
         run_case("random_reentry_resume", [&] { test_random_reentry_resume(random); });
     }
-    std::printf("real Pause public integration: %d cases passed (%d repetitions, 20 cases/round + 4 deep chains)\n",
-                iterations * 20 + 4, iterations);
+    if (api_iterations == iterations && deep_iterations == 1)
+        std::printf("real Pause public integration: %d cases passed (%d repetitions, 20 cases/round + 4 deep chains)\n",
+                    iterations * 20 + 4, iterations);
+    else
+        std::printf("real Pause public integration: %d cases passed (19 threaded x %d, API x %d, 4 deep chains x %d)\n",
+                    iterations * 19 + api_iterations + 4 * deep_iterations, iterations, api_iterations, deep_iterations);
     std::printf("resume/stop contention: %d rounds, 4 run_loops + 4 controllers + 4 stoppers + observer\n",
                 iterations);
     std::printf("contended completions: value=%" PRIu64 " stopped=%" PRIu64 " (exactly once)\n",

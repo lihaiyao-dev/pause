@@ -1,3 +1,7 @@
+# 测试项目：编译 pause_environment_compile.cpp 的 1 个合法和 4 个非法环境。
+# 先验证正例，排除缺依赖等伪失败；负例须正常启动编译器且非零退出。
+# 继承当前构建配置/CRT，各次编译限时 90 秒，日志和对象文件写入 OUTPUT_DIRECTORY。
+# 由 CTest pause_environment_compile 传入参数；不是运行时压力测试。
 # Run with the same compiler environment as the normal CMake build. A valid
 # receiver is compiled first, ruling out missing includes/toolchain failures as
 # a false positive for either deliberately invalid receiver environment.
@@ -32,7 +36,7 @@ else()
     set(object_arg -o "${OUTPUT_DIRECTORY}/pause_environment_compile.o")
 endif()
 
-foreach(environment_case RANGE 0 2)
+foreach(environment_case RANGE 0 4)
     execute_process(
         COMMAND "${CXX}" ${common_args}
             "-DPAUSE_ENVIRONMENT_CASE=${environment_case}"
@@ -53,4 +57,4 @@ foreach(environment_case RANGE 0 2)
         message(FATAL_ERROR "Compiler failed to execute for negative case ${environment_case}: ${result}")
     endif()
 endforeach()
-message(STATUS "Pause environment compile checks passed: valid, missing scheduler, wrong stop token")
+message(STATUS "Pause environment compile checks passed: valid, missing scheduler, wrong/missing stop token, invalid scheduler")

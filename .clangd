@@ -1,0 +1,7 @@
+CompileFlags:
+  CompilationDatabase: build/msvc-debug
+  Compiler: clang-cl
+
+Diagnostics:
+  UnusedIncludes: Strict
+  MissingIncludes: Strict

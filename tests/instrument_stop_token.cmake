@@ -1,3 +1,6 @@
+# 测试辅助项目：在固定 stdexec stop_token 的注册、选中回调及删除等待点插入测试 hook。
+# 先校验上游 SHA256，再要求每个 hook 恰好插入一次；不匹配时配置必须失败。
+# 仅生成构建目录中的测试头，供可控竞态测试使用；不修改上游源码或提供运行时验收。
 # Instrument a build-only copy. Never change the pinned dependency checkout.
 include_guard(GLOBAL)
 set(pause_stop_header "${stdexec_SOURCE_DIR}/include/stdexec/stop_token.hpp")

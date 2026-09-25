@@ -1,3 +1,22 @@
+﻿/* 测试项目：pause_state_model_test
+ * 目的: 将 pause-branch-design.md 的状态规则编码为可执行模型, 检查事件级不变量。
+ * 测试项:
+ * 1. API 错误优先级及失败不变性、空屏障、epoch/SingleStep、构造期取消、Resume/Stop 双方获胜。
+ * 2. 分批注销先于交付、恢复调度 value/stopped、重叠暂停、创建即负有责任和 RAII 退役。
+ * 3. 链/二叉/梳状多层 fork、直接子计数、父分支重入与重复 fork、
+ *    多控制者旧 epoch 竞争、深层父分支重入前预取消。
+ * 4. 独立重建计数/所有权关系, 拒绝 7 种故意缺陷, 执行有界状态搜索和固定种子随机事件。
+ * 5. 可选深链模型检查暂停/退役/重入/复用及最终完全排空。
+ * 预期: 每个事件保持计数、完成权、waiter、epoch 和树关系一致; 非法调用返回指定错误;
+ *       注入缺陷必须被拒绝, 完整 scope 清空 records/operations/batches/waiters。
+ * 入口: 配置 PAUSE_BUILD_DESIGN_TESTS=ON, CTest 名称 pause_state_model_test;
+ *       pause_deep_chain_model_test 另执行 --chain-depth 16 --chain-only 1。
+ *       CLI 默认 --depth 7 --random-steps 10000 --seeds 20 --max-records 16;
+ *       可加 --chain-depth N (1..4096), --chain-only 1 必须同时指定 chain-depth。
+ *       --depth 是搜索事件深度, 与 --chain-depth 的分支层数不同; 常规验证使用有限参数。
+ * 边界: 不包含 pause.hpp、真实线程、C++ 对象生命周期或内存序验证。
+ *       模型事件数不等于真实 Pause 场景/完整 scope 数, 有界探索不代表穷尽全部可能执行。
+ */
 // Executable design model for pause-branch-design.md sections 4, 5, 7 and 8.
 // This does NOT exercise pause.hpp, C++ object lifetimes, or actual threads.
 // Each action is one lock transaction or one explicitly separate delivery step.

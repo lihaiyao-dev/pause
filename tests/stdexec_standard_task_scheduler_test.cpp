@@ -1,3 +1,20 @@
+﻿/* 测试项目：stdexec_standard_task_scheduler_test
+ * 目的: 实测新 stdexec::task 的调度、取消 token 和公开 affine 定制协议。
+ * 测试项:
+ * 1. 先测宿主基线, 区分 Debug 额外构造 sender 的 schedule 调用与实际 start。
+ * 2. Open/Resumed/Stopped/Error x 直接属性/affine 定制/外包 then x 有无 when_all。
+ * 3. Resumed 排队后停止, 核对原始跳转接受取消及 when_all 的 token 替换和传播。
+ * 4. 两个独立 scheduler 资源; 异线程原始 stopped/error 返回各自宿主资源。
+ * 5. callback 停止与排队停止均先撤销内部责任, 再等待额外宿主 affinity 跳转。
+ * 预期: 逐路核对 schedule/start 次数、线程、token、完成通道和业务是否继续;
+ *       直接 affine 的 Open 无额外跳转、Resumed 一次, stopped/error 另有一次真实跳转;
+ *       外包 then 隐藏 affine 成员后恢复默认额外调度, stopped 后不继续业务。
+ * 入口: 配置 PAUSE_BUILD_DESIGN_TESTS=ON, CTest 名称 stdexec_standard_task_scheduler_test。
+ *       CLI --iterations N, N 为正整数, 默认 100, 每轮 35 个协议场景。
+ * 边界: ProtocolSender 是依赖可行性探针, 不含 pause.hpp, 无真实屏障、分支或回调所有权。
+ *       此探针为观察传播而转发 error, 不实现真实 Pause 的内部错误 terminate 策略;
+ *       所测属性/定制行为仅代表固定依赖版本, 不能直接折算为 Pause 场景通过数。
+ */
 #include <exec/completion_behavior.hpp>
 #include <stdexec/execution.hpp>
 

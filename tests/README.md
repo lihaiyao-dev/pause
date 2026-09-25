@@ -1,13 +1,88 @@
 # Pause 实现、设计与依赖契约测试
 
 当前测试直接覆盖 `pause.hpp`，并保留设计模型及固定 stdexec 的独立探针。
-最新的 Release 极端压力、逐场景次数、覆盖边界和复现命令见
+
+## 测试目录与注释（2026-09-25 整理）
+
+- 当前回归源码、配置期探针和 CMake 测试辅助脚本放在本目录。
+- 可维护的压力与证据汇总入口放在 [scripts](scripts/)。
+- 历史手写探针、审查脚本、调试器命令和编辑器夹具放在 [archive](archive/README.md)，其中有些依赖历史 API 或专用工具，不自动加入 CTest。
+- 编译产物、生成的插桩依赖、日志和历史证据仍放在仓库的 build 目录；正式示例仍在 examples。scripts/msvc-cmake.cmd 是通用构建入口，保留在仓库 scripts 中。
+
+每个测试源码/脚本的文件头说明测试项目、判据、运行入口或辅助用途，以及覆盖边界。
+本次迁移后的 Debug/Release 回归及入口验证结果见 [目录整理验证](test-layout-validation-2026-09-25.md)。
+中文 C++ 注释使用 UTF-8 BOM 以便 MSVC 识别，不向公共库增加编译选项。
+
+从仓库根运行当前回归：
+
+```powershell
+.\scripts\msvc-cmake.cmd test all
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File tests/scripts/run-pause-release-stress.ps1 -OnlyTest pause_sender_test -Iterations 2 -OutputDirectory build/layout-smoke-release
+```
+
+大基数压力增加完整场景的重复次数，保留已验证的有限递归深度。
+run-chain-stress.ps1 是历史资源边界诊断工具，会探查失败边界；当前验收不运行它的极限扫描。
+
+本次目录/注释整理会改变源码哈希。下文历史运行次数只代表对应日期和原始哈希的结果，
+不能当作整理后的重新压力验证。证据汇总器继续严格检查哈希；旧记录对当前源码执行
+-RequireComplete 可能失败，这是预期的失配提示。历史报告中的原执行路径通过
+[迁移索引](archive/README.md) 查找新位置，原日志/哈希不改写。
+
+## 逐场景异常与大基数验收（2026-09-25）
+
+按设计条款列举的正常、边界、异常、编译拒绝和契约外场景见
+[逐场景矩阵](pause-contract-scenario-matrix.md)，执行结果和栈深度边界见
+[验收报告](pause-contract-validation-2026-09-25.md)。报告分别统计每项百万次普通用例、
+十万次线程/拓扑用例、ASan/TSan各万次及独立终止子进程，并区分补测与经哈希核验的既有证据。
+
+证据汇总不启动测试，可检查当前源码是否仍与运行记录匹配。它会先写入 CompletionDirectory/evidence-summary.json，再按 -RequireComplete 判定是否失败。保留旧汇总时，请先备份该文件或使用包含所需证据的独立目录副本；空目录会缺少补充证据。本次注释整理后，旧记录的严格哈希检查预期失败：
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File tests/scripts/summarize-pause-contract.ps1 -RequireComplete
+```
+
+压力通过增加完整运行次数实现；不执行无界递归或自动扫描栈溢出极限。公开API和生产状态机未因本次测试调整。
+
+## 前一轮并发、生命周期与边界压力验证（2026-09-25）
+
+此前结果见[并发压力测试报告](pause-concurrency-validation-2026-09-25.md)。当轮生产头直接通过 Windows Debug/Release 与 WSL TSan 验证；不沿用旧命名空间的测试 shim。
+
+新增 `pause_concurrency_stress_test.cpp`，默认每类 10 次，共 70 个完整作用域：4 线程抢 root、创建分支与请求暂停竞争，以及 4 个 run_loop 上递归 fork/when_all 的连续、单步、取消、业务异常和释放顺序。已接入 CTest、Release/ASan 压力脚本与 TSan 的 `--suite concurrency`。
+
+最终 Debug/Release 各 **51/51**。主压力、sanitizer、模型事件分开统计；已知 stdexec 快速 error 深链栈溢出也在报告中明确列为失败边界，不把脚本完成等同于所有子进程通过。
+
+## stdexec 配置期兼容性检查（2026-09-24）
+
+`tests/check_stdexec.cpp` 在每次 CMake 配置时编译，检查 `.affine()` 成员定制
+是否实际被选用，以及生产头文件的 Pause/default task 接口；只生成静态库，
+不运行目标程序。选版方法和现有固定提交测试的限制见[构建说明](../README.md#1-支持环境与构建)。
+
+本次使用 Windows/MSVC、CMake 3.30、Ninja 验证：
+
+| stdexec 源码 | 配置检查 | 工具链及头文件 smoke |
+| --- | --- | --- |
+| `nvhpc-26.05` / `6d7ad689` | 按预期拒绝：未选用 `.affine()` 成员定制 | 未运行 |
+| 2026-07-05 / `5e22875a` | 通过 | 两项构建、运行通过 |
+| 默认提交 / `f0e8ae6f` | Debug、Release 均通过 | 包含在完整回归中 |
+| 2026-09-23 main / `c4b51c48` | 通过 | 两项构建、运行通过 |
+
+三个非默认源码均使用无 `.git` 的完整 archive，经 `FETCHCONTENT_SOURCE_DIR_STDEXEC`
+选入；同一构建目录从最新源码切换到旧源码后仍正确拒绝，没有复用成功缓存。
+旧上游 CMake 自行下载的 RAPIDS helper 和仅用于版本号生成的 `execution.bs`
+在测试构建目录离线预填（后者只含 `Revision: 11` 元数据）；库源码及头文件未修改。
+默认提交执行 `.\scripts\msvc-cmake.cmd test all`，Debug **35/35**（45.65 秒）、
+Release **35/35**（16.60 秒）通过。其他提交未运行完整插桩/并发回归。
+本次日志、矩阵脚本与退出码保存在 `build/stdexec-cmake-check-20260924/`。
+
+## 既有实现与压力测试记录
+
+此前的 Release 极端压力、逐场景次数、覆盖边界和复现命令见
 [Release 极端测试报告](pause-release-extreme-validation-2026-09-23.md)。
 生产实现及依赖保持不变；新增测试不依赖 `assert`，`/DNDEBUG` 下仍检查结果。
 
 ```powershell
 .\scripts\msvc-cmake.cmd test release
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/run-pause-release-stress.ps1 -Iterations 100000
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File tests/scripts/run-pause-release-stress.ps1 -Iterations 100000
 ```
 
 长压力使用独立脚本的进程超时，不受 CTest 短回归超时限制；日志包含编译命令、
@@ -54,7 +129,7 @@ TSan 脚本的 `--suite extreme` / `--suite batch` 分别选择新测试。
 
 `stdexec_deep_chain_test` 支持 `chain`/`fork` 和
 `value`/`error`/`stopped`/`root-stop`/`error-fast`/`stopped-fast`；无参数运行
-0/1/8/16 层共 48 个场景。极限扫描脚本为 `scripts/run-chain-stress.ps1`，
+0/1/8/16 层共 48 个场景。极限扫描脚本为 `tests/scripts/run-chain-stress.ps1`，
 用法与隔离预算见上述报告；不要将观测故障深度当成跨平台安全上限。
 
 ## 当前设计复审（2026-09-23）
@@ -333,6 +408,20 @@ test presets。Release 用例的 `CHECK` 不依赖 `assert`，不会被 `NDEBUG`
 callback 注册／选中／注销窗口和内部错误终止。负编译测试先验证有效环境
 能编译，再确认缺 scheduler／错误 token 被拒绝；头文件测试包含两个翻译单元。
 
+2026-09-24 的组件标准化迁移保持固定 stdexec 及运行行为，范围见设计第 3.5 节。
+`pause_sender_test.cpp` 增加 raw sender 静态签名查询（无环境和带环境）、
+`completion_signatures_of_t` 查询（含 const 引用）及 raw operation 的显式
+`operation_state_tag`／`operation_state` 编译断言，确保仍为原来的两个 value 标签
+和 stopped 三个签名。现有属性查询、环境拒绝、取消、生命周期及调度计数测试保留，
+用于检查协议样板调整的行为兼容性；上述 Debug/Release 命令可复验。
+本次参照 C++ 工作草案 `e908596f`（2026-09-21），这些检查使用固定 stdexec，
+不构成原生 `std::execution` 后端的编译或运行验证。
+
+本轮先确认新增编译检查在迁移前因缺少静态签名接口和 operation 标记而失败，
+随后重新构建并通过 MSVC **Debug 35/35（48.67 秒）、Release 35/35（20.49 秒）**。
+完整日志为 `build/component-standardization-20260924/validation.log`；本轮未运行
+ASan、TSan 或其他工具链。源码改动仅为编译期协议声明，原有运行期验收断言不变。
+
 增加真实线程竞争次数并指定可复现的随机种子：
 
 ```powershell
@@ -347,18 +436,20 @@ callback 注册／选中／注销窗口和内部错误终止。负编译测试�
 完整 ASan 验收在 x64 Visual Studio Developer PowerShell 中执行：
 
 ```powershell
-.\scripts\run-pause-stress.ps1 -Iterations 10000 -ModelSteps 100000 -ModelSeeds 100
+.\tests\scripts\run-pause-stress.ps1 -Iterations 10000 -ModelSteps 100000 -ModelSeeds 100
 ```
 
 脚本重新编译全部真实测试和历史探针，逐进程设超时并保留构建日志、stdout、
 stderr、退出码和 SHA256。主模型是 1000 万个事件，不是 1000 万个工作流；
 实际线程场景数量由各 executable 单独输出。ASan 不能替代 TSan。
 
-本机 WSL 的 TSan 复现命令如下；脚本使用测试专用 POSIX 声明 shim 和单进程
-`setarch -R`。这不是对原生 Linux 公共 API 兼容性的承诺，详见验收报告。
+本机 WSL 的 TSan 复现命令如下；脚本使用单进程 `setarch -R`。
+2026-09-24 命名空间改为 `coop_pause` 后，已移除旧 POSIX 声明 shim，直接编译
+生产头文件。此前验收报告记录的是改名前的运行，不能视作新脚本的执行结果。
+头文件双翻译单元测试还检查全局 `pause()` 与库命名空间在两种声明顺序下共存。
 
 ```sh
-bash scripts/run-pause-tsan.sh --iterations 1000
+bash tests/scripts/run-pause-tsan.sh --iterations 1000
 ```
 
 测试钩子只插入构建目录中的固定 stdexec 副本，先核对原头 SHA256；生产

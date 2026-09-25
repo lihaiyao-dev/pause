@@ -1,3 +1,17 @@
+﻿/* 测试项目：stdexec_callback_affine_lifetime_test
+ * 目的: 验证固定版本 stdexec 的真实 stop callback、let_stopped 与 run_loop 组合生命周期。
+ * 测试项:
+ * 1. callback 返回后宿主才运行: 原 operation 在 callback 内销毁, stopped 由宿主交付。
+ * 2. callback/request_stop 尾部仍挂起时, 宿主已完成并销毁整个外层 operation。
+ * 3. 原 terminal CPO 尚未返回时, 协调线程销毁外层 operation。
+ * 4. 同一窗口由最终 receiver 同步销毁外层 operation。
+ * 预期: callback、原 operation 析构、调度 value 和 stopped 均恰好一次;
+ *       原 operation 在 callback 线程退役, 完成在保存的 scheduler 线程交付;
+ *       stopped token 不阻止额外的 unstoppable 宿主跳转, 析构后只访问外部协调状态。
+ * 入口: 配置 PAUSE_BUILD_DESIGN_TESTS=ON, CTest 名称同文件名去掉 .cpp。
+ *       直接运行支持 --iterations N, 默认 100, 范围 1..100000, 每轮 4 个确定性交错。
+ * 边界: 仅固定依赖的组合探针, 不含 pause.hpp, 不验证真实 Pause 的屏障、分支或回调裁决。
+ */
 #include <stdexec/execution.hpp>
 
 #include <atomic>

@@ -1,3 +1,20 @@
+﻿/* 测试项目：pause_extreme_test
+ * 目的: 用真实 Pause 分支和 stdexec::task 检查嵌套 fork/join 与逐层退役.
+ * 测试项:
+ * - chain 深度 32/64/128, binary 深度 5, comb 深度 32.
+ * - 每种形状/深度组合均覆盖连续运行, 单步运行, 屏障处取消, 外部业务 sender
+ *   的 error 和 stopped, 共 25 个参数项; 外部非值完成需取消等待中的兄弟.
+ * 关键预期: 根只完成一次且结果匹配路径; 子分支先于父分支退役; 正常路径完成
+ * join 后父分支重新进入; 快照责任计数/epoch/revision 一致, 结束时责任清零.
+ * 单步链的恢复次数应为 2 * depth + 1, 异常路径不得继续正常 join.
+ * 入口: PAUSE_BUILD_TESTS=ON 时注册同名 CTest.
+ *   ctest --test-dir <build> -C <config> -R "^pause_extreme_test$" --output-on-failure
+ *   pause_extreme_test --suite all --iterations 10
+ * 参数: suite 为 all/chain/binary/comb/structure/outcomes; structure 选择前三种
+ * 路径, outcomes 选择外部 error/stopped; iterations 为 1..1000000, 默认 10.
+ * 边界: 工作流与独立控制协程在同一 run_loop 上运行, 不覆盖 CPU 并发竞态.
+ * 深度固定, 压力来自完整作用域的重复执行; 不探测无限递归或承诺任意深度栈安全.
+ */
 #include "pause.hpp"
 
 #include <stdexec/execution.hpp>
@@ -34,10 +51,10 @@ int current_iteration = 0;
 }
 #define CHECK(expression) ((expression) ? (void)0 : fail(#expression, __LINE__))
 
-using pause::AdvanceMode;
-using pause::GatePhase;
-using pause::PauseBranch;
-using pause::PauseSource;
+using coop_pause::AdvanceMode;
+using coop_pause::GatePhase;
+using coop_pause::PauseBranch;
+using coop_pause::PauseSource;
 
 enum class Shape { Chain, Binary, Comb };
 enum class Path { Continuous, SingleStep, PausedCancel, ExternalError, ExternalStopped };
@@ -155,7 +172,7 @@ struct State {
     bool external_completed = false;
 };
 
-void check_snapshot(State& state, const pause::PauseSnapshot& snapshot)
+void check_snapshot(State& state, const coop_pause::PauseSnapshot& snapshot)
 {
     CHECK(snapshot.root_created);
     CHECK(snapshot.revision >= state.previous_revision);
@@ -174,7 +191,7 @@ void check_snapshot(State& state, const pause::PauseSnapshot& snapshot)
             CHECK(snapshot.paused_epoch->value <= snapshot.revision);
             CHECK(snapshot.waiting_branch_count == snapshot.live_branch_count);
         }
-        if (snapshot.origin == pause::PauseOrigin::SingleStep)
+        if (snapshot.origin == coop_pause::PauseOrigin::SingleStep)
             CHECK(snapshot.step_round.has_value());
     }
 }
@@ -271,7 +288,7 @@ stdexec::task<void> control(State& state)
         check_snapshot(state, snapshot);
         if (state.path == Path::SingleStep && snapshot.phase == GatePhase::Paused
             && snapshot.waiting_branch_count != 0) {
-            CHECK(snapshot.origin == pause::PauseOrigin::SingleStep);
+            CHECK(snapshot.origin == coop_pause::PauseOrigin::SingleStep);
             CHECK(snapshot.step_round == state.resumes);
             CHECK(snapshot.paused_epoch->value > state.previous_epoch);
             state.previous_epoch = snapshot.paused_epoch->value;

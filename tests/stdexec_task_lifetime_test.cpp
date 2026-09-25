@@ -1,3 +1,20 @@
+﻿/* 测试项目：stdexec_task_lifetime_test
+ * 目的: 保留旧 exec::task 的依赖事实及不兼容行为对照, 不作为当前 Pause 支持的 task 宿主。
+ * 测试项:
+ * 1. value/error/stopped 的 frame 退役, 对比 task 外停止转换和 task wrapper 内停止转换。
+ * 2. 深度 3/5 的侧支链、深度 3 的二叉分支, 检查父子所有权和子先父后退役。
+ * 3. 无 Guard 的 task 不产生模拟责任; 未吞掉的 stopped/error 取消兄弟。
+ * 4. 预取消及等待中取消时 wrapper 的停止可见性, 观察旧默认恢复 scheduler 的 token 边界。
+ * 5. 异线程 value/stopped completion 先进入而 start 未返回时的握手。
+ * 预期: 外包 stopped_as_optional 可将原 task frame 保留到外层 join, wrapper 则提前释放;
+ *       所有模拟责任最终仅释放一次, completion 不越过 start 尾部提前继续业务;
+ *       旧 erased scheduler 不传递 stop token 的既有行为按当前断言记录为兼容性对照。
+ * 入口: 配置 PAUSE_BUILD_DESIGN_TESTS=ON, CTest 名称 stdexec_task_lifetime_test。
+ *       CLI --iterations N, 默认 100, 范围 1..1000000, 每轮 25 个依赖实验。
+ * 边界: 本文件显式包含 exec/task.hpp, 区别于 stdexec_standard_task_* 的新 stdexec::task。
+ *       ResponsibilityGuard 仅模拟所有权, 不含 pause.hpp; 通过不表示旧 task 满足 Pause 契约。
+ *       固定浅层拓扑用于生命周期检查, 不用于无界递归深度扫描。
+ */
 #include <exec/completion_behavior.hpp>
 #include <exec/task.hpp>
 #include <stdexec/execution.hpp>

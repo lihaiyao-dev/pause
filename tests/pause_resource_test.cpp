@@ -1,3 +1,25 @@
+﻿/* 测试项目：pause_resource_test
+ * 性质: 真实 Pause 的逐分配点故障注入、回滚、资源计数与 connect 后无分配测试.
+ * 测试项目:
+ * - Continuous/SingleStep 创建根及 Continuous 创建独立分支: 失败返回 ResourceExhausted,
+ *   快照与通知不变; 成功提交一次, 作用域退出后分配计数回到基线.
+ * - 固定/动态四子分支分叉, 含嵌套父分支与两种模式: 逐个可恢复分配点失败,
+ *   状态完整回滚; 每次失败后复用同一父分支重试成功, 防止隐藏的父记录损坏.
+ * - 固定/动态零数量分叉, 含 moved-from 分支: 优先返回 InvalidForkCount 且不尝试分配.
+ * - 超大动态分叉: 长度错误转换为 ResourceExhausted, 快照保持不变.
+ * - 后续 task 创建失败: 未执行任何业务, 已创建的休眠兄弟 task 析构时释放其分支.
+ * - 原始 sender 的 Open/Resume/Stop/QueuedStop, 含适用的空 token 路径:
+ *   connect 完成后禁用分配仍正常完成, 分支析构不分配, 取消后参与计数归零.
+ * - task 的四条相同路径: 禁用分配后仍完成宿主亲和投递, 仅 value 路径继续业务.
+ * - MSVC checked iterator 专项: 动态分叉 vector 的三个 noexcept 代理分配点分别在
+ *   两种模式下启动子进程, 必须在预定 bad_alloc 注入点 terminate 并退出 77.
+ * 运行: ctest --test-dir <build> -R '^pause_resource_test$' --output-on-failure.
+ * CLI: --iterations N (默认 100), 每轮 25 个状态族; --proxy-iterations N (默认 1)
+ *      仅适用于 MSVC checked iterator 构建, 控制额外 6 类终止子进程. 次数范围 1..1000000.
+ * 内部入口: --proxy-child INDEX continuous|step, 由父进程调用.
+ * 边界: operator new/delete 仅在此测试程序替换, 故障注入仅作用于调用线程;
+ *   无分配断言从操作已 connect 之后开始, 不宣称整个对象创建过程都无分配.
+ */
 #include "pause.hpp"
 
 #include <array>
@@ -114,7 +136,7 @@ namespace {
 constexpr std::size_t fork_child_count = 4;
 
 template<bool Dynamic>
-auto fork_children(pause::PauseBranch& branch)
+auto fork_children(coop_pause::PauseBranch& branch)
 {
     if constexpr (Dynamic) return branch.fork_and_block_self(fork_child_count);
     else return branch.fork_and_block_self<fork_child_count>();
@@ -139,10 +161,10 @@ void check_vector_proxy_allocations()
     {
         allocation_probe::Failure count_only(
             static_cast<std::size_t>(std::numeric_limits<std::ptrdiff_t>::max()));
-        std::vector<pause::PauseBranch> original;
+        std::vector<coop_pause::PauseBranch> original;
         CHECK(allocation_probe::attempts == 1);
         allocation_probe::attempts = 0;
-        std::vector<pause::PauseBranch> moved(std::move(original));
+        std::vector<coop_pause::PauseBranch> moved(std::move(original));
         CHECK(allocation_probe::attempts == 1);
     }
     CHECK(allocation_probe::outstanding == initial_allocations);
@@ -151,10 +173,10 @@ void check_vector_proxy_allocations()
 thread_local std::size_t proxy_failure_index = 0;
 thread_local std::size_t proxy_notifications = 0;
 
-[[noreturn]] void proxy_failure_child(std::size_t index, pause::AdvanceMode mode)
+[[noreturn]] void proxy_failure_child(std::size_t index, coop_pause::AdvanceMode mode)
 {
     CHECK(is_proxy_failure(index));
-    pause::PauseSource source(mode, []() noexcept { ++proxy_notifications; });
+    coop_pause::PauseSource source(mode, []() noexcept { ++proxy_notifications; });
     auto root = source.make_root_branch();
     CHECK(root && proxy_notifications == 1);
     proxy_failure_index = index;
@@ -179,26 +201,31 @@ thread_local std::size_t proxy_notifications = 0;
     std::_Exit(80); // Recovering or returning normally is not a death-test pass.
 }
 
-void test_proxy_failures(const char* executable)
+void test_proxy_failures(const char* executable, int repetitions)
 {
     check_vector_proxy_allocations();
     for (const char* mode : {"continuous", "step"}) {
         for (auto index : proxy_failure_indices) {
             char index_text[32];
             CHECK(std::snprintf(index_text, sizeof(index_text), "%zu", index) > 0);
-            const char* arguments[]{executable, "--proxy-child", index_text, mode, nullptr};
-            const auto code = _spawnv(_P_WAIT, executable, arguments);
-            if (code != 77)
-                std::fprintf(stderr, "vector proxy failure %zu (%s) exited %lld, expected 77\n",
-                             index, mode, static_cast<long long>(code));
-            CHECK(code == 77);
+            for (int iteration = 0; iteration != repetitions; ++iteration) {
+                const char* arguments[]{executable, "--proxy-child", index_text, mode, nullptr};
+                const auto code = _spawnv(_P_WAIT, executable, arguments);
+                if (code != 77)
+                    std::fprintf(stderr, "vector proxy failure %zu (%s) iteration %d exited %lld, expected 77\n",
+                                 index, mode, iteration, static_cast<long long>(code));
+                CHECK(code == 77);
+            }
+            std::printf("PASS proxy-termination=%zu mode=%s subprocesses=%d expected_exit=77\n",
+                        index, mode, repetitions);
+            std::fflush(stdout);
         }
     }
-    std::puts("PASS: 6 MSVC iterator-debug proxy allocation termination subprocesses");
+    std::printf("PASS: %d MSVC iterator-debug proxy allocation termination subprocesses\n", 6 * repetitions);
 }
 #endif
 
-void same_snapshot(const pause::PauseSnapshot& left, const pause::PauseSnapshot& right)
+void same_snapshot(const coop_pause::PauseSnapshot& left, const coop_pause::PauseSnapshot& right)
 {
     CHECK(left.revision == right.revision);
     CHECK(left.root_created == right.root_created);
@@ -210,7 +237,7 @@ void same_snapshot(const pause::PauseSnapshot& left, const pause::PauseSnapshot&
     CHECK(left.live_branch_count == right.live_branch_count);
 }
 
-void test_root(pause::AdvanceMode mode)
+void test_root(coop_pause::AdvanceMode mode)
 {
     std::size_t failed_stages = 0;
     for (std::size_t index = 0; index != 32; ++index) {
@@ -218,14 +245,14 @@ void test_root(pause::AdvanceMode mode)
         bool succeeded = false;
         {
             std::size_t notifications = 0;
-            pause::PauseSource source(mode, [&]() noexcept { ++notifications; });
+            coop_pause::PauseSource source(mode, [&]() noexcept { ++notifications; });
             const auto before = source.snapshot();
             {
                 allocation_probe::Failure failure(index);
                 auto root = source.make_root_branch();
                 succeeded = root.has_value();
                 if (!succeeded) {
-                    CHECK(root.error() == pause::PauseError::ResourceExhausted);
+                    CHECK(root.error() == coop_pause::PauseError::ResourceExhausted);
                     same_snapshot(source.snapshot(), before);
                     CHECK(notifications == 0);
                 } else {
@@ -253,7 +280,7 @@ void test_independent_branch()
         bool succeeded = false;
         {
             std::size_t notifications = 0;
-            pause::PauseSource source(pause::AdvanceMode::Continuous,
+            coop_pause::PauseSource source(coop_pause::AdvanceMode::Continuous,
                                       [&]() noexcept { ++notifications; });
             auto root = source.make_root_branch();
             CHECK(root);
@@ -264,7 +291,7 @@ void test_independent_branch()
                 auto branch = source.make_branch();
                 succeeded = branch.has_value();
                 if (!succeeded) {
-                    CHECK(branch.error() == pause::PauseError::ResourceExhausted);
+                    CHECK(branch.error() == coop_pause::PauseError::ResourceExhausted);
                     same_snapshot(source.snapshot(), before);
                     CHECK(notifications == before_notifications);
                 } else {
@@ -281,7 +308,7 @@ void test_independent_branch()
 }
 
 template<bool Dynamic>
-void test_fork(pause::AdvanceMode mode, bool nested = false)
+void test_fork(coop_pause::AdvanceMode mode, bool nested = false)
 {
     for (std::size_t index = 0; index != 64; ++index) {
 #if defined(_MSVC_STL_VERSION) && _ITERATOR_DEBUG_LEVEL > 0
@@ -295,10 +322,10 @@ void test_fork(pause::AdvanceMode mode, bool nested = false)
         bool succeeded = false;
         {
             std::size_t notifications = 0;
-            pause::PauseSource source(mode, [&]() noexcept { ++notifications; });
+            coop_pause::PauseSource source(mode, [&]() noexcept { ++notifications; });
             auto root = source.make_root_branch();
             CHECK(root);
-            std::optional<std::array<pause::PauseBranch, 1>> parent_holder;
+            std::optional<std::array<coop_pause::PauseBranch, 1>> parent_holder;
             auto* parent = &*root;
             if (nested) {
                 auto child = root->fork_and_block_self<1>();
@@ -313,7 +340,7 @@ void test_fork(pause::AdvanceMode mode, bool nested = false)
                 auto children = fork_children<Dynamic>(*parent);
                 succeeded = children.has_value();
                 if (!succeeded) {
-                    CHECK(children.error() == pause::PauseError::ResourceExhausted);
+                    CHECK(children.error() == coop_pause::PauseError::ResourceExhausted);
                     same_snapshot(source.snapshot(), before);
                     CHECK(notifications == before_notifications);
                 } else {
@@ -337,8 +364,8 @@ void test_fork(pause::AdvanceMode mode, bool nested = false)
                 CHECK(notifications == before_notifications + 1);
             }
             CHECK(source.snapshot().live_branch_count == 0);
-            if (mode == pause::AdvanceMode::SingleStep)
-                CHECK(source.snapshot().phase == pause::GatePhase::Paused);
+            if (mode == coop_pause::AdvanceMode::SingleStep)
+                CHECK(source.snapshot().phase == coop_pause::GatePhase::Paused);
         }
         CHECK(allocation_probe::outstanding == initial_allocations);
         if (succeeded) { CHECK(index >= fork_child_count); return; }
@@ -346,15 +373,15 @@ void test_fork(pause::AdvanceMode mode, bool nested = false)
     CHECK(false);
 }
 
-void test_zero_count_before_allocation(pause::AdvanceMode mode)
+void test_zero_count_before_allocation(coop_pause::AdvanceMode mode)
 {
     const auto initial_allocations = allocation_probe::outstanding.load();
     {
         std::size_t notifications = 0;
-        pause::PauseSource source(mode, [&]() noexcept { ++notifications; });
+        coop_pause::PauseSource source(mode, [&]() noexcept { ++notifications; });
         auto root = source.make_root_branch();
         CHECK(root);
-        pause::PauseBranch moved(std::move(*root));
+        coop_pause::PauseBranch moved(std::move(*root));
         const auto before = source.snapshot();
         const auto before_notifications = notifications;
         {
@@ -362,8 +389,8 @@ void test_zero_count_before_allocation(pause::AdvanceMode mode)
             for (auto* branch : {&moved, &*root}) {
                 auto fixed = branch->fork_and_block_self<0>();
                 auto dynamic = branch->fork_and_block_self(0);
-                CHECK(!fixed && fixed.error() == pause::PauseError::InvalidForkCount);
-                CHECK(!dynamic && dynamic.error() == pause::PauseError::InvalidForkCount);
+                CHECK(!fixed && fixed.error() == coop_pause::PauseError::InvalidForkCount);
+                CHECK(!dynamic && dynamic.error() == coop_pause::PauseError::InvalidForkCount);
             }
             CHECK(allocation_probe::attempts == 0 && !allocation_probe::injected);
             same_snapshot(source.snapshot(), before);
@@ -375,16 +402,16 @@ void test_zero_count_before_allocation(pause::AdvanceMode mode)
 
 void test_fork_length_error()
 {
-    pause::PauseSource source(pause::AdvanceMode::Continuous, []() noexcept {});
+    coop_pause::PauseSource source(coop_pause::AdvanceMode::Continuous, []() noexcept {});
     auto root = source.make_root_branch();
     CHECK(root);
     const auto before = source.snapshot();
     auto children = root->fork_and_block_self(std::numeric_limits<std::size_t>::max());
-    CHECK(!children && children.error() == pause::PauseError::ResourceExhausted);
+    CHECK(!children && children.error() == coop_pause::PauseError::ResourceExhausted);
     same_snapshot(source.snapshot(), before);
 }
 
-stdexec::task<void> dormant_task(pause::PauseBranch branch, bool& entered)
+stdexec::task<void> dormant_task(coop_pause::PauseBranch branch, bool& entered)
 {
     co_await branch.suspend_point();
     entered = true;
@@ -394,7 +421,7 @@ void test_task_creation_failure()
 {
     const auto initial_allocations = allocation_probe::outstanding.load();
     {
-        pause::PauseSource source(pause::AdvanceMode::SingleStep, []() noexcept {});
+        coop_pause::PauseSource source(coop_pause::AdvanceMode::SingleStep, []() noexcept {});
         auto root = source.make_root_branch();
         CHECK(root);
         auto children = root->fork_and_block_self<4>();
@@ -453,10 +480,10 @@ void test_no_allocation_after_connect(int route, bool empty_token)
 {
     stdexec::run_loop loop;
     stdexec::inplace_stop_source stop;
-    pause::PauseSource source(route == 0 ? pause::AdvanceMode::Continuous
-                                        : pause::AdvanceMode::SingleStep,
+    coop_pause::PauseSource source(route == 0 ? coop_pause::AdvanceMode::Continuous
+                                        : coop_pause::AdvanceMode::SingleStep,
                               []() noexcept {});
-    std::optional<pause::PauseBranch> branch;
+    std::optional<coop_pause::PauseBranch> branch;
     {
         auto root = source.make_root_branch();
         CHECK(root);
@@ -471,13 +498,13 @@ void test_no_allocation_after_connect(int route, bool empty_token)
                 stdexec::start(operation);
                 if (route == 0) { CHECK(result == 1); return; }
                 CHECK(result == 0);
-                CHECK(source.snapshot().phase == pause::GatePhase::Paused);
+                CHECK(source.snapshot().phase == coop_pause::GatePhase::Paused);
                 if (route == 2) {
                     CHECK(!stop.request_stop());
                     CHECK(result == 2);
                 } else {
                     CHECK(source.resume(*source.snapshot().paused_epoch,
-                                        pause::AdvanceMode::SingleStep));
+                                        coop_pause::AdvanceMode::SingleStep));
                     CHECK(result == 0);
                     if (route == 3) CHECK(!stop.request_stop());
                 }
@@ -489,7 +516,7 @@ void test_no_allocation_after_connect(int route, bool empty_token)
         CHECK(allocation_probe::attempts == 0);
         if (route >= 2) {
             CHECK(source.snapshot().live_branch_count == 0);
-            CHECK(source.snapshot().phase == pause::GatePhase::Paused);
+            CHECK(source.snapshot().phase == coop_pause::GatePhase::Paused);
         }
     }
     {
@@ -504,8 +531,8 @@ void test_task_no_allocation_after_connect(int route)
 {
     stdexec::run_loop loop;
     stdexec::inplace_stop_source stop;
-    pause::PauseSource source(route == 0 ? pause::AdvanceMode::Continuous
-                                        : pause::AdvanceMode::SingleStep,
+    coop_pause::PauseSource source(route == 0 ? coop_pause::AdvanceMode::Continuous
+                                        : coop_pause::AdvanceMode::SingleStep,
                               []() noexcept {});
     auto root = source.make_root_branch();
     CHECK(root);
@@ -520,7 +547,7 @@ void test_task_no_allocation_after_connect(int route)
             stdexec::schedule(loop.get_scheduler()) | stdexec::then([&]() noexcept {
                 if (route == 0) { CHECK(result == 1); return; }
                 CHECK(result == 0);
-                CHECK(source.snapshot().phase == pause::GatePhase::Paused);
+                CHECK(source.snapshot().phase == coop_pause::GatePhase::Paused);
                 if (route == 2) {
                     CHECK(!stop.request_stop());
                     // Default task's affinity adapter must deliver later;
@@ -528,7 +555,7 @@ void test_task_no_allocation_after_connect(int route)
                     CHECK(result == 0 && source.snapshot().live_branch_count == 0);
                 } else {
                     CHECK(source.resume(*source.snapshot().paused_epoch,
-                                        pause::AdvanceMode::SingleStep));
+                                        coop_pause::AdvanceMode::SingleStep));
                     CHECK(result == 0);
                     if (route == 3) CHECK(!stop.request_stop());
                 }
@@ -547,7 +574,7 @@ void test_task_no_allocation_after_connect(int route)
 
 void run_cases()
 {
-    for (auto mode : {pause::AdvanceMode::Continuous, pause::AdvanceMode::SingleStep}) {
+    for (auto mode : {coop_pause::AdvanceMode::Continuous, coop_pause::AdvanceMode::SingleStep}) {
         test_root(mode);
         test_fork<false>(mode);
         test_fork<true>(mode);
@@ -581,19 +608,27 @@ int main(int argc, char** argv)
         const bool single_step = std::strcmp(argv[3], "step") == 0;
         CHECK(single_step || std::strcmp(argv[3], "continuous") == 0);
         proxy_failure_child(static_cast<std::size_t>(index), single_step
-            ? pause::AdvanceMode::SingleStep : pause::AdvanceMode::Continuous);
+            ? coop_pause::AdvanceMode::SingleStep : coop_pause::AdvanceMode::Continuous);
     }
 #endif
-    int iterations = 100;
-    if (argc != 1) {
-        CHECK(argc == 3 && std::strcmp(argv[1], "--iterations") == 0);
+    int iterations = 100, proxy_iterations = 1;
+    CHECK(argc % 2 == 1);
+    for (int index = 1; index < argc; index += 2) {
         char* end = nullptr;
-        const long count = std::strtol(argv[2], &end, 10);
-        CHECK(end != argv[2] && *end == '\0' && count > 0 && count <= 1000000);
-        iterations = static_cast<int>(count);
+        const long count = std::strtol(argv[index + 1], &end, 10);
+        CHECK(end != argv[index + 1] && *end == '\0' && count > 0 && count <= 1000000);
+        if (std::strcmp(argv[index], "--iterations") == 0) iterations = static_cast<int>(count);
+        else {
+            CHECK(std::strcmp(argv[index], "--proxy-iterations") == 0);
+#if defined(_MSVC_STL_VERSION) && _ITERATOR_DEBUG_LEVEL > 0
+            proxy_iterations = static_cast<int>(count);
+#else
+            CHECK(false); // This configuration cannot exercise iterator proxy termination.
+#endif
+        }
     }
 #if defined(_MSVC_STL_VERSION) && _ITERATOR_DEBUG_LEVEL > 0
-    test_proxy_failures(argv[0]);
+    test_proxy_failures(argv[0], proxy_iterations);
 #endif
     for (int i = 0; i != iterations; ++i) run_cases();
     std::printf("Pause resource rollback and no-allocation paths: %d cases passed (%d repetitions)\n",

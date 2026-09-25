@@ -20,7 +20,7 @@
 #include <utility>
 #include <vector>
 
-namespace pause {
+namespace coop_pause {
 
 enum class AdvanceMode { Continuous, SingleStep };
 enum class PauseOrigin { ControlRequest, SingleStep };
@@ -302,6 +302,8 @@ concept PauseEnvironment = requires(const Env& env) {
 
 template<class Receiver>
 struct RawSuspendOperation : PauseWaiter {
+    using operation_state_concept = stdexec::operation_state_tag;
+
     struct StopFn {
         RawSuspendOperation* operation;
         void operator()() noexcept { operation->on_stop(); }
@@ -411,12 +413,17 @@ struct RawSuspendOperation : PauseWaiter {
 
 struct RawSuspendSender {
     using sender_concept = stdexec::sender_tag;
-    using completion_signatures = stdexec::completion_signatures<
-        stdexec::set_value_t(InlinePass), stdexec::set_value_t(ResumedPass),
-        stdexec::set_stopped_t()>;
     PauseStateData* state;
     BranchRecord* branch;
     PausePointInfo info;
+
+    template<class, class... Env>
+    static consteval auto get_completion_signatures()
+    {
+        return stdexec::completion_signatures<
+            stdexec::set_value_t(InlinePass), stdexec::set_value_t(ResumedPass),
+            stdexec::set_stopped_t()>{};
+    }
 
     template<class Receiver>
         requires PauseEnvironment<stdexec::env_of_t<Receiver>>
@@ -770,6 +777,6 @@ private:
     }
 };
 
-} // namespace pause
+} // namespace coop_pause
 
 #endif  // PAUSE_HPP_

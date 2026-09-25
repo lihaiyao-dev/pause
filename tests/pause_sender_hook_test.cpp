@@ -1,3 +1,19 @@
+﻿/* 测试项目：pause_sender_hook_test
+ * 性质: 对固定 stdexec stop callback 添加测试钩子, 驱动真实 Pause 的七个确定性交错窗口.
+ * 测试项目:
+ * - callback 已注册但构造未返回时取消: 构造结束前只记录取消, 随后 stopped 并撤销责任.
+ * - 构造中 callback 已被选中: 关闭状态最终 stopped; Open 已赢得 InlinePass 时保持 value,
+ *   即使注销等待期间又发起暂停, 也不改写已提交的完成决定.
+ * - resume 注销已选中 callback: 注销在 Pause 锁外等待, 等待期间不调度; 释放后入队并观察 stop.
+ * - callback 完成尾部仍在执行时其他线程销毁 operation: 销毁须等 callback 退出;
+ *   第二次 request_stop 不可被误当作第一次请求栈已结束的证明.
+ * - Open 完成后再请求 stop: callback 已注销, 不再被选中且 value 不改变.
+ * - 批量恢复: 投递第一个节点前先注销整批 callback; 在首个 schedule 内取消,
+ *   两个节点都由队列完成 stopped, 无 callback 再选中, 最终 live/waiting 归零.
+ * 运行: ctest --test-dir <build> -R '^pause_sender_hook_test$' --output-on-failure.
+ * CLI: --iterations N (默认 100, 范围 1..1000000), 每轮执行 7 个窗口.
+ * 边界: CMake 为本目标优先配置插桩头文件; latch 控制时序, 不靠 sleep 推断竞态是否发生.
+ */
 namespace pause_test_hooks {
 void after_registration() noexcept;
 void after_selection() noexcept;
@@ -16,7 +32,7 @@ struct HookState {
 };
 // Installed before any thread starts, cleared only after all users join.
 HookState* hooks = nullptr;
-using Sender = decltype(std::declval<pause::PauseBranch&>().suspend_point());
+using Sender = decltype(std::declval<coop_pause::PauseBranch&>().suspend_point());
 using Operation = stdexec::connect_result_t<Sender, Receiver>;
 
 void registered_before_emplace_returns()
@@ -24,7 +40,7 @@ void registered_before_emplace_returns()
     HookState state; state.hold_registration = true; hooks = &state;
     SchedulerState scheduler;
     stdexec::inplace_stop_source stop;
-    pause::PauseSource source(pause::AdvanceMode::SingleStep, []() noexcept {});
+    coop_pause::PauseSource source(coop_pause::AdvanceMode::SingleStep, []() noexcept {});
     auto root = source.make_root_branch(); CHECK(root);
     ReceiverState receiver{&scheduler, stop.get_token()};
     auto operation = stdexec::connect(root->suspend_point(), Receiver{&receiver});
@@ -50,7 +66,7 @@ void selected_during_construction(bool open)
     stdexec::inplace_stop_source stop;
     std::latch waiting{1};
     std::atomic<bool> armed{false};
-    pause::PauseSource source(open ? pause::AdvanceMode::Continuous : pause::AdvanceMode::SingleStep,
+    coop_pause::PauseSource source(open ? coop_pause::AdvanceMode::Continuous : coop_pause::AdvanceMode::SingleStep,
         [&]() noexcept { if (armed.exchange(false)) waiting.count_down(); });
     auto root = source.make_root_branch(); CHECK(root);
     ReceiverState receiver{&scheduler, stop.get_token()};
@@ -69,7 +85,7 @@ void selected_during_construction(bool open)
         // start already claimed InlinePass, but the selected callback keeps
         // reset blocked. A later pause cannot change that completed decision.
         CHECK(source.request_pause());
-        CHECK(source.snapshot().phase == pause::GatePhase::Collecting);
+        CHECK(source.snapshot().phase == coop_pause::GatePhase::Collecting);
     }
     state.release_selection.count_down();
     requester.join(); starter.join();
@@ -86,7 +102,7 @@ void resume_unregisters_selected_callback()
     stdexec::inplace_stop_source stop;
     std::latch waiting{1};
     std::atomic<bool> armed{false};
-    pause::PauseSource source(pause::AdvanceMode::SingleStep,
+    coop_pause::PauseSource source(coop_pause::AdvanceMode::SingleStep,
         [&]() noexcept { if (armed.exchange(false)) waiting.count_down(); });
     auto root = source.make_root_branch(); CHECK(root);
     ReceiverState receiver{&scheduler, stop.get_token()};
@@ -97,7 +113,7 @@ void resume_unregisters_selected_callback()
     const auto epoch = *source.snapshot().paused_epoch;
     std::jthread requester([&] { CHECK(!stop.request_stop()); });
     state.selected.wait();
-    std::jthread resumer([&] { CHECK(source.resume(epoch, pause::AdvanceMode::SingleStep)); });
+    std::jthread resumer([&] { CHECK(source.resume(epoch, coop_pause::AdvanceMode::SingleStep)); });
     state.removing.wait();
     CHECK(receiver.result == Completion::None);
     CHECK(source.snapshot().waiting_branch_count == 0);
@@ -107,7 +123,7 @@ void resume_unregisters_selected_callback()
     CHECK(receiver.result == Completion::Stopped); // Resume won raw; queue observes stop.
     CHECK(scheduler.calls == 1 && scheduler.starts == 1);
     CHECK(source.snapshot().live_branch_count == 0);
-    CHECK(source.snapshot().phase == pause::GatePhase::Paused);
+    CHECK(source.snapshot().phase == coop_pause::GatePhase::Paused);
     hooks = nullptr;
 }
 
@@ -119,7 +135,7 @@ void callback_completion_destroyed_elsewhere()
     std::latch waiting{1};
     std::atomic<bool> armed{false}, destroyed{false};
     Gate tail;
-    pause::PauseSource source(pause::AdvanceMode::SingleStep,
+    coop_pause::PauseSource source(coop_pause::AdvanceMode::SingleStep,
         [&]() noexcept { if (armed.exchange(false)) waiting.count_down(); });
     auto root = source.make_root_branch(); CHECK(root);
     ReceiverState receiver{&scheduler, stop.get_token()};
@@ -148,7 +164,7 @@ void unregister_before_request()
     HookState state; hooks = &state;
     SchedulerState scheduler;
     stdexec::inplace_stop_source stop;
-    pause::PauseSource source(pause::AdvanceMode::Continuous, []() noexcept {});
+    coop_pause::PauseSource source(coop_pause::AdvanceMode::Continuous, []() noexcept {});
     auto root = source.make_root_branch(); CHECK(root);
     ReceiverState receiver{&scheduler, stop.get_token()};
     auto operation = stdexec::connect(root->suspend_point(), Receiver{&receiver});
@@ -164,7 +180,7 @@ void resume_unregisters_entire_batch()
     HookState state; hooks = &state;
     SchedulerState scheduler;
     stdexec::inplace_stop_source stop;
-    pause::PauseSource source(pause::AdvanceMode::Continuous, []() noexcept {});
+    coop_pause::PauseSource source(coop_pause::AdvanceMode::Continuous, []() noexcept {});
     auto first = source.make_root_branch(); CHECK(first);
     auto second = source.make_branch(); CHECK(second);
     CHECK(source.request_pause());
@@ -199,13 +215,13 @@ void resume_unregisters_entire_batch()
             CHECK(local->hooks->selections == 0);
         }
     };
-    CHECK(source.resume(*source.snapshot().paused_epoch, pause::AdvanceMode::SingleStep));
+    CHECK(source.resume(*source.snapshot().paused_epoch, coop_pause::AdvanceMode::SingleStep));
     starter.join();
     CHECK(a.result == Completion::Stopped && b.result == Completion::Stopped);
     CHECK(scheduler.calls == 2 && scheduler.starts == 2);
     CHECK(state.registrations == 2 && state.selections == 0);
     CHECK(source.snapshot().live_branch_count == 0);
-    CHECK(source.snapshot().phase == pause::GatePhase::Paused);
+    CHECK(source.snapshot().phase == coop_pause::GatePhase::Paused);
     hooks = nullptr;
 }
 } // namespace

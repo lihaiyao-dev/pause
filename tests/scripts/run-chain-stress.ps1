@@ -1,3 +1,13 @@
+﻿<#
+测试项目：历史 stdexec 独立深链/模型的资源边界诊断。
+对 chain/fork 的 value、error、stopped、root-stop、快速终止路径逐级增深；
+每次独立进程，记录超时/内存预算/退出码，必要时二分并重复确认观察到的边界。
+这是有意探查失败边界的工具，可能触发栈溢出，不是当前 Pause 大基数压力入口。
+本次回归不运行该极限扫描；常规压力应使用固定已验证深度并增加完整重复次数。
+-Executable 和 -Label 必填；从仓库根运行，相对输入/输出路径以调用者工作目录为准。
+-Model 切换模型参数；-InvestigateCrashes 允许细化访问违例；结果须逐条审查 JSON。
+脚本完成不代表每个子进程通过，资源限制不计为生命周期测试成功。
+#>
 param(
     [Parameter(Mandatory=$true)][string]$Executable,
     [Parameter(Mandatory=$true)][ValidatePattern('^[a-zA-Z0-9_-]+$')][string]$Label,

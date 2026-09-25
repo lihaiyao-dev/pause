@@ -1,3 +1,18 @@
+﻿/* 测试项目：stdexec_stop_callback_test
+ * 目的: 核对固定版本 inplace_stop_callback 的注册、请求、注销及单次完成权。
+ * 测试项:
+ * 1. 空 token、预停止 token 在构造中同步调用、先注销后停止、重复/重入请求、自注销。
+ * 2. 多请求者竞争、注册与停止竞争、跨线程注销次序、首个请求未返回时重复请求先返回。
+ * 3. 简化 claim_probe 中 Resume 先赢、callback 先赢及二者并发竞争。
+ * 预期: callback 最多调用一次, 跨线程注销在 callback 尾部之后完成;
+ *       value/stopped 只有一个完成者, 完成前注销, 同线程自销毁后不访问已销毁注册对象。
+ *       固定版本首次 request_stop 返回 false、后续返回 true, 与 std::stop_source 不同。
+ * 入口: 配置 PAUSE_BUILD_DESIGN_TESTS=ON, CTest 名称 stdexec_stop_callback_test。
+ *       CLI --iterations N, 默认 200, 范围 1..100000。
+ *       5 个基本用例运行一次, 7 个并发用例每轮运行, 共 12 类用例。
+ * 边界: 真实依赖 + mutex 完成权探针, 不含 pause.hpp, 不验证 pending 或分支树。
+ *       本文件的并发测试不强制暂停库内部窗口; 该窗口由独立 hook 测试覆盖。
+ */
 #include <stdexec/stop_token.hpp>
 
 #include <atomic>

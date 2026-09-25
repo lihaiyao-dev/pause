@@ -1,4 +1,11 @@
+> 2026-09-25 目录整理：本文保留历史运行命令、次数及哈希。测试脚本现位于
+> tests/scripts，build 中的手写探针/脚本现位于 tests/archive；
+> 旧路径到新路径见 [迁移索引](archive/README.md)。日志仍在 build。
+> 新增注释改变了源码哈希，本文历史压力结果不代表整理后重新运行的结果。
+
 # Pause Release 极端测试（2026-09-23）
+
+> 历史记录：本报告使用旧 C++ 命名空间 `pause`。2026-09-24 已改为 `coop_pause`，并移除 TSan 脚本的 POSIX 声明 shim；下文保留当时的实现边界和运行证据，不代表改名后的重新验收。
 
 本轮按 `pause-branch-design.md` 第 13、14 节补齐并执行真实实现测试。
 `pause.hpp` 未修改；固定 stdexec 提交仍为

@@ -1,3 +1,8 @@
+> 2026-09-25 目录整理：本文保留历史运行命令、次数及哈希。测试脚本现位于
+> tests/scripts，build 中的手写探针/脚本现位于 tests/archive；
+> 旧路径到新路径见 [迁移索引](archive/README.md)。日志仍在 build。
+> 新增注释改变了源码哈希，本文历史压力结果不代表整理后重新运行的结果。
+
 # PauseBranch 设计审查与测试记录（2026-09-22）
 
 审查基线为 [pause-branch-design.md](../pause-branch-design.md)；`pause.hpp` 仍为 0 字节。

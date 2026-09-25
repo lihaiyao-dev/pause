@@ -1,3 +1,19 @@
+﻿/* 测试项目：stdexec_standard_task_lifetime_test
+ * 目的: 用所有权哨兵检验固定版本新 stdexec::task 的 frame、子任务与操作生命周期。
+ * 测试项:
+ * 1. 深度 0/3/5 的侧支链及深度 3 的二叉分支, 各核对 value、error、
+ *    外包 stopped_as_optional 和 task wrapper 内部 stopped_as_optional 四条路径。
+ * 2. wrapper 的 value/error 传播; 原始 stopped/error 对未完成兄弟的取消。
+ * 3. wrapper 在宿主 starts_on 前预取消时不进入业务协程, 最终释放所有持有责任。
+ * 4. 异线程 completion 先进入而 start 尚未返回的 value/stopped 握手。
+ * 预期: value/error 与 wrapper 转换停止后, 责任在无关兄弟完成前释放;
+ *       直接在 task 外转换 stopped 会保留 frame 到外层 join 释放, 这是已断言的负对照;
+ *       各节点只退役一次, 父子计数与次序正确, start 尾部结束前不继续业务或发布 stopped。
+ * 入口: 配置 PAUSE_BUILD_DESIGN_TESTS=ON, CTest 名称 stdexec_standard_task_lifetime_test。
+ *       CLI --iterations N, 默认 100, 范围 1..1000000, 每轮 23 个场景。
+ * 边界: 使用真实新 task 和测试用 Guard, 不含 pause.hpp, 不证明 Pause 的真实分支计数。
+ *       二叉分支仅正常路径保证满展开; 测试固定浅层拓扑, 不作为任意深度栈安全证明。
+ */
 #include <exec/completion_behavior.hpp>
 #include <stdexec/execution.hpp>
 

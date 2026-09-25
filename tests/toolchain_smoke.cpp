@@ -1,3 +1,9 @@
+﻿/* 测试项目：C++23/stdexec 工具链运行冒烟。
+ * 在独立 jthread 的 run_loop 上启动 task，co_await just(42)，核对 sync_wait 返回 42。
+ * scope_guard 负责结束循环并 join；进程返回 0 为通过，空结果或错误值返回 1。
+ * 构建开关：PAUSE_BUILD_TOOLCHAIN_SMOKE_TEST；CTest：pause_toolchain_smoke。
+ * 仅检查协程、调度和链接环境，不覆盖 Pause 状态机，也不接受压力次数参数。
+ */
 #include <exec/scope.hpp>
 #include <stdexec/execution.hpp>
 

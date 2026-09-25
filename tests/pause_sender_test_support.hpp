@@ -1,3 +1,16 @@
+﻿/* 测试项目：pause_sender_test_support
+ * 性质: sender、hook、death、task lifetime 等测试共享的辅助头文件, 不是独立可执行程序.
+ * 支持的测试项目:
+ * - CountingScheduler 包装真实 run_loop, 统计 schedule/start/value/stopped 与 stop token 传递,
+ *   保留后端实际取消检查, 供调用方断言调度次数及执行资源亲和.
+ * - Gate 和调度钩子在已注册、入队或完成尾部等指定位置建立可重复的并发顺序.
+ * - Receiver 记录完成类型、线程及是否发生于 start 内, 强制只完成一次,
+ *   支持在完成时销毁 operation 和暂停完成尾部; 非预期 set_error 立即失败.
+ * - run_in_context 先在真实 run_loop 调度上下文内启动被测操作, 再运行循环直到测试完成.
+ * - iterations 解析共享 --iterations N 参数, 默认 100, 接受范围 1..1000000.
+ * 运行: 由包含本文件的各测试目标编译, 随相应 CTest 测试执行, 无独立 CLI.
+ * 边界: 所有计数和阻塞钩子仅服务测试; 各调用方负责释放 Gate 并在状态析构前结束工作线程.
+ */
 #pragma once
 
 #include "pause.hpp"

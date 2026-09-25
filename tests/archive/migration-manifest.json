@@ -1,0 +1,824 @@
+[
+    {
+        "old_path":  "build/with-msvc.cmd",
+        "new_path":  "tests/archive/with-msvc.cmd",
+        "sha256":  "12D8D14DFC8354A123B24C749A199D1FD9C9B587317B5D14A194CFB876BA8EAA",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "build/verify-lldb-dap.py",
+        "new_path":  "tests/archive/verify-lldb-dap.py",
+        "sha256":  "A0EEC36949ED36D23FD8F6DEED7E54E091A695B113AB79B06A88A6DB51C391AF",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "build/validate-usage-examples.cmd",
+        "new_path":  "tests/archive/validate-usage-examples.cmd",
+        "sha256":  "5DB65CD892573DE006006487115B6D82D14D3E6C274882C19A0D4BCF598F26D6",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "build/validate-usage-all.cmd",
+        "new_path":  "tests/archive/validate-usage-all.cmd",
+        "sha256":  "C1F61448F181EF3F7F3B5AA9B9B5D68D4FD802D2551060C1845769FC1A65CD6C",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "build/tsan-tests/run-nopie.sh",
+        "new_path":  "tests/archive/tsan-tests/run-nopie.sh",
+        "sha256":  "A7067F6FA4EE0F12A061FAEE9EC812B181E7A5322707508FC58559D79069D12A",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "build/tsan-tests/run-noaslr.sh",
+        "new_path":  "tests/archive/tsan-tests/run-noaslr.sh",
+        "sha256":  "493CE7B813F19A3672C347E22285C300664FC5B2C136FE15E311EA5640D64094",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "build/tsan-tests/run-1000.sh",
+        "new_path":  "tests/archive/tsan-tests/run-1000.sh",
+        "sha256":  "2C1B6788C19B598B4983481A396408813F469D0FA6C9191D0FF547254CF3A6ED",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "build/tsan-tests/posix_pause_shim.hpp",
+        "new_path":  "tests/archive/tsan-tests/posix_pause_shim.hpp",
+        "sha256":  "225FD1BA582304B693D979CAD9E5564A79579F44FEF2FED437A4614BFF93C37A",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "build/tsan-check-20260923/check-tsan.sh",
+        "new_path":  "tests/archive/tsan-check-20260923/check-tsan.sh",
+        "sha256":  "359B8D53DE3D8B57CB9B795F59B72A21F9ABFC56BADC4B2C272EF6C9FE882B1D",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "build/transition-extreme-asan/build-run.cmd",
+        "new_path":  "tests/archive/transition-extreme-asan/build-run.cmd",
+        "sha256":  "6306F01E702B184FD740EDD06A0209614E10A61B617107AFCB450306C5A3082E",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "build/task-adoption-20260923/run-scheduler-asan.cmd",
+        "new_path":  "tests/archive/task-adoption-20260923/run-scheduler-asan.cmd",
+        "sha256":  "523CE5BBCCFD1F46638F771833C38FA98427CA84AB04868823C58B305CF91F6C",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "build/task-adoption-20260923/build-scheduler-asan.cmd",
+        "new_path":  "tests/archive/task-adoption-20260923/build-scheduler-asan.cmd",
+        "sha256":  "196ED3EAAD359277E8B2E9E1FE512D584A9C9F5202E4B35C1DFBD3CEA3683F5E",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "build/summarize-pause-release.ps1",
+        "new_path":  "tests/archive/summarize-pause-release.ps1",
+        "sha256":  "A37A19A1718064111CAAB3A7BD5D79CC002A01237B57A0AF95F2E44E6781621C",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "build/pause-contract-completion-20260925/tsan-positive/run-positive.sh",
+        "new_path":  "tests/archive/pause-contract-completion-20260925/tsan-positive/run-positive.sh",
+        "sha256":  "28C5941AD5188D68E2F74A903F2E89EF6A772446A743E220107739E3E89D598B",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "build/pause_optional_solution_probe.cpp",
+        "new_path":  "tests/archive/pause_optional_solution_probe.cpp",
+        "sha256":  "96484DAC35D947554ED16BCF3D9ABF353A397D76D264DCC80DE597CF4A3DDBD5",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "build/pause-contract-completion-20260925/run-asan.ps1",
+        "new_path":  "tests/archive/pause-contract-completion-20260925/run-asan.ps1",
+        "sha256":  "DB997BA9249C7A34DA783C8C70D0D7D7FEB28BC13C764510D86417C435390534",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "build/pause-contract-completion-20260925/run-asan.cmd",
+        "new_path":  "tests/archive/pause-contract-completion-20260925/run-asan.cmd",
+        "sha256":  "C04E9349D659153AB73D804E8DA8035E582F0FF12FD070E36E0000962B29A63A",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "build/release-extreme-batch-asan/build-and-test.cmd",
+        "new_path":  "tests/archive/release-extreme-batch-asan/build-and-test.cmd",
+        "sha256":  "982F642A1333614304D451E5E002F0C0E73DC1B805441DD31BB0371CF9342342",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "build/probe-lldb-server.py",
+        "new_path":  "tests/archive/probe-lldb-server.py",
+        "sha256":  "A7052D491A9734903900CA9421D3D2AB083AA9A99EB78C2FAD324981256CB81E",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "build/release-extreme-nested/run-asan.cmd",
+        "new_path":  "tests/archive/release-extreme-nested/run-asan.cmd",
+        "sha256":  "8AABD5A53FC8996C772E7892B09455109C0229CC500074081B69BC87782A2E77",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "build/release-extreme-tsan-final/posix_pause_shim.hpp",
+        "new_path":  "tests/archive/release-extreme-tsan-final/posix_pause_shim.hpp",
+        "sha256":  "225FD1BA582304B693D979CAD9E5564A79579F44FEF2FED437A4614BFF93C37A",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "build/release-extreme-nested/pause_external_probe.cpp",
+        "new_path":  "tests/archive/release-extreme-nested/pause_external_probe.cpp",
+        "sha256":  "D61023E6875D2C7265AEC22FD7850F1F96B019143737E0226BC3CBED9E736D78",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "build/release-extreme-nested/build.cmd",
+        "new_path":  "tests/archive/release-extreme-nested/build.cmd",
+        "sha256":  "110BB2E6DD2EAB8F3518A05C3FBEAE7E8E883BA7AF01B49360BA9C864B427448",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "build/release-extreme-nested/build-final-asan.cmd",
+        "new_path":  "tests/archive/release-extreme-nested/build-final-asan.cmd",
+        "sha256":  "4D4E2A59EBBFFA1B849EA4DBC845B733D8D773B4192171541B7D1782533750E9",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "build/release-extreme-nested/build-extra.cmd",
+        "new_path":  "tests/archive/release-extreme-nested/build-extra.cmd",
+        "sha256":  "5DFE941988011B5B96F93E5D5F74F3B404B511BB309B5D55C06103D9D29528D6",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "build/pause-contract-completion-20260925/check-tsan-evidence.sh",
+        "new_path":  "tests/archive/pause-contract-completion-20260925/check-tsan-evidence.sh",
+        "sha256":  "660B9286EE059BCBE037693982EC8BF760BFC5878A06B4788C3A9A1373D45B27",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "build/resource-review/tsan_probe.cpp",
+        "new_path":  "tests/archive/resource-review/tsan_probe.cpp",
+        "sha256":  "BB3ADACC44164A83A3877F268E9F6AA22E029B4287273ECA373F350EA32D1984",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "build/resource-review/run-no-proxy.cmd",
+        "new_path":  "tests/archive/resource-review/run-no-proxy.cmd",
+        "sha256":  "590D7F9843D30DBC54659B58F98013A4BD038938C8D4A2214AC43A592824C970",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "build/resource-review/negative.cmd",
+        "new_path":  "tests/archive/resource-review/negative.cmd",
+        "sha256":  "BE4309F0F414B6CBEEC3CBDF2DAE857D1FC01DCC67DBC501874DB3F1D6489504",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "build/resource-review/compile.cmd",
+        "new_path":  "tests/archive/resource-review/compile.cmd",
+        "sha256":  "5C9477BDC01B8892B3731D4E0736131D2C595E103F359AA9D803C77B649B1694",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "build/resource-review/compile-no-proxy.cmd",
+        "new_path":  "tests/archive/resource-review/compile-no-proxy.cmd",
+        "sha256":  "1ADD7026DE68BE54347EE44C58BE321F8C61DEABB92EF83218FFC588A1303D9D",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "build/pause-contract-completion-20260925/timeout-selfcheck/run-selfcheck.ps1",
+        "new_path":  "tests/archive/pause-contract-completion-20260925/timeout-selfcheck/run-selfcheck.ps1",
+        "sha256":  "78749E8A49570D41D2199E9DF7923749D127AD090E3B00A8809428C4703C29EF",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "build/pause-contract-completion-20260925/timeout-selfcheck/run-selfcheck.cmd",
+        "new_path":  "tests/archive/pause-contract-completion-20260925/timeout-selfcheck/run-selfcheck.cmd",
+        "sha256":  "728661162020EFEDC8AF52D5AB8C7F7807C4B091E1FE05007AC523FE6C924E14",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "build/pause-contract-completion-20260925/run-tsan.sh",
+        "new_path":  "tests/archive/pause-contract-completion-20260925/run-tsan.sh",
+        "sha256":  "AAAB777709462CB4DB5C4E31B511FBADAE57B26BC85A81D540E01AEB2F10C62E",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "build/pause-contract-audit-20260925/tsan/tsan-positive-control.cpp",
+        "new_path":  "tests/archive/pause-contract-audit-20260925/tsan/tsan-positive-control.cpp",
+        "sha256":  "4AC76C645DC674ACFDA889F9C02FC240F2126582C61E90C1D42F00E7E0FCF1C5",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "build/pause-contract-audit-20260925/tsan/summarize.ps1",
+        "new_path":  "tests/archive/pause-contract-audit-20260925/tsan/summarize.ps1",
+        "sha256":  "0C4006674FA5008A6BEFA157A703DD924926CBECCBB831CE9379024D70C8A33D",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "build/pause-contract-audit-20260925/tsan/run-supplement.sh",
+        "new_path":  "tests/archive/pause-contract-audit-20260925/tsan/run-supplement.sh",
+        "sha256":  "DD6217D82739FC9EA767C05E8ADC22413752D1404C7159E279E26C0E6E8C9A69",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "build/pause-contract-audit-20260925/tsan/run-suite.sh",
+        "new_path":  "tests/archive/pause-contract-audit-20260925/tsan/run-suite.sh",
+        "sha256":  "83A7EF311749A12C46AF31C7B626AD795F7E5E764DF12703590D581E1B49C156",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "build/pause-contract-audit-20260925/tsan/run-existing.sh",
+        "new_path":  "tests/archive/pause-contract-audit-20260925/tsan/run-existing.sh",
+        "sha256":  "1C70038735E70BE0B2FAC9ADE784F2FB0039F8DB2D8C7D6ED017FCFF25589972",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "build/release-extreme-tsan/posix_pause_shim.hpp",
+        "new_path":  "tests/archive/release-extreme-tsan/posix_pause_shim.hpp",
+        "sha256":  "225FD1BA582304B693D979CAD9E5564A79579F44FEF2FED437A4614BFF93C37A",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "build/stdexec-compat-review-20260924/pilot.cmd",
+        "new_path":  "tests/archive/stdexec-compat-review-20260924/pilot.cmd",
+        "sha256":  "1DB2EE47EE4C422507233B6C2C5533F8BF8E27626652F23384192365D3F32827",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "build/stdexec-compat-review-20260924/normalized-pilot.cmd",
+        "new_path":  "tests/archive/stdexec-compat-review-20260924/normalized-pilot.cmd",
+        "sha256":  "26F468B80F9ADEF351ED1A72CA15F4786E5008ACFDF993AB674569B3AB9E248C",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "build/stdexec-compat-review-20260924/normalized-pilot.ps1",
+        "new_path":  "tests/archive/stdexec-compat-review-20260924/normalized-pilot.ps1",
+        "sha256":  "47D268B038BA71C6111EE0209B3D60596F47C6D9F9FFB11C0B4AA456662E725C",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "build/release-extreme-tsan-o2/posix_pause_shim.hpp",
+        "new_path":  "tests/archive/release-extreme-tsan-o2/posix_pause_shim.hpp",
+        "sha256":  "225FD1BA582304B693D979CAD9E5564A79579F44FEF2FED437A4614BFF93C37A",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "build/stdexec-compat-review-20260924/pilot.ps1",
+        "new_path":  "tests/archive/stdexec-compat-review-20260924/pilot.ps1",
+        "sha256":  "8DBEED391D5E79AE694AC13F4CDA675B2D2D97A818DEA94F28B58CD233B03E15",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "build/review-10000000-20260923/verify-final.cmd",
+        "new_path":  "tests/archive/review-10000000-20260923/verify-final.cmd",
+        "sha256":  "32A887FBBEA1D644992F6F53412896A9977B1608554A9629D5D6DF3B9B6E705D",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "build/review-10000000-20260923/terminate-composition-probe.cpp",
+        "new_path":  "tests/archive/review-10000000-20260923/terminate-composition-probe.cpp",
+        "sha256":  "CEC5A3997ABD2B2C7255AE171417914C0B1889F686C5068CF7D66B8CCA6188F9",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "build/review-10000000-20260923/run-terminate-probe.ps1",
+        "new_path":  "tests/archive/review-10000000-20260923/run-terminate-probe.ps1",
+        "sha256":  "5FA94688AF831D847BA934CE0335ED633BB778B811DD189B81C1303C8A75AA3C",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "build/review-10000000-20260923/run-suite.ps1",
+        "new_path":  "tests/archive/review-10000000-20260923/run-suite.ps1",
+        "sha256":  "678BF3A2874FCBACABC19B1706B841CA7BD9D2CD3F3D9731BD6AE9C98364F628",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "build/review-10000000-20260923/run-model-final.cmd",
+        "new_path":  "tests/archive/review-10000000-20260923/run-model-final.cmd",
+        "sha256":  "90558A521EB15A0247B8BEA74D7B84722AFDBA4E94CC30B80A56E5D28DAB7FEC",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "build/review-10000000-20260923/run-deep-chain-final.ps1",
+        "new_path":  "tests/archive/review-10000000-20260923/run-deep-chain-final.ps1",
+        "sha256":  "F3D99DA19F5CC37C8784D51A3E75CCE0DD977BE53CBE2FE45769C7934F80A79E",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "build/review-10000000-20260923/run-deep-chain-final.cmd",
+        "new_path":  "tests/archive/review-10000000-20260923/run-deep-chain-final.cmd",
+        "sha256":  "0516CCD1CF3D41CB2B16E0F715A667986C2CA14712FE58F5F9F3B433CFD68B61",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "build/review-10000000-20260923/run-asan.cmd",
+        "new_path":  "tests/archive/review-10000000-20260923/run-asan.cmd",
+        "sha256":  "D9C796DE88C9F86ABB31CD38E5E08F74ECC3E32EBED0C13E6AF5C743EAF03CEA",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "build/review-10000000-20260923/model-baseline.cpp",
+        "new_path":  "tests/archive/review-10000000-20260923/model-baseline.cpp",
+        "sha256":  "78C29A9583610C97316FD1DF7F2BE9E3281AC24310A4FCD3FB75F41C5EF689AD",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "build/review-10000000-20260923/lifetime-terminal-inflight.cpp",
+        "new_path":  "tests/archive/review-10000000-20260923/lifetime-terminal-inflight.cpp",
+        "sha256":  "6C1A5D6B04EF48ACAE03965A76263A06845A6973D823AF7B43BA661AA659225F",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "build/review-10000000-20260923/lifetime-run.cmd",
+        "new_path":  "tests/archive/review-10000000-20260923/lifetime-run.cmd",
+        "sha256":  "ED3DB897073BC67AE5661D1F917991794940DC177DF4EF3525C0492469C247E8",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "build/review-10000000-20260923/lifetime-run-final.ps1",
+        "new_path":  "tests/archive/review-10000000-20260923/lifetime-run-final.ps1",
+        "sha256":  "F50084F327DE873A3A803767DA026754A170AFA65FC5DC1841B63C53D2ECF5DA",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "build/review-10000000-20260923/lifetime-run-final.cmd",
+        "new_path":  "tests/archive/review-10000000-20260923/lifetime-run-final.cmd",
+        "sha256":  "D045250C596C7E1006725BF708264725B60A8857CF4686C8DB164654F519D72D",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "build/review-10000000-20260923/lifetime-build-final.cmd",
+        "new_path":  "tests/archive/review-10000000-20260923/lifetime-build-final.cmd",
+        "sha256":  "42820BBCB3800E166EE3ED630584D5F8A948A5C6BAEC54D05E25839CBC6ED722",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "build/review-10000000-20260923/build-run-terminate-probe.cmd",
+        "new_path":  "tests/archive/review-10000000-20260923/build-run-terminate-probe.cmd",
+        "sha256":  "D543A0C2B169B6ECE327D571E15F51C143AFEBD685DCFD5AE4F37BBA02BDD4EF",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "build/review-10000000-20260923/build-deep-chain-final.cmd",
+        "new_path":  "tests/archive/review-10000000-20260923/build-deep-chain-final.cmd",
+        "sha256":  "BD42EE89A4CF3A07D4EA5611F79BF0604CBED2C9DFEF5BCB3449F6E418D2C0AF",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "build/review-10000000-20260923/build-asan.cmd",
+        "new_path":  "tests/archive/review-10000000-20260923/build-asan.cmd",
+        "sha256":  "CFF9DFF3AA9A3AF6D3D645757CAB2BB74DA78B7B2D3C65C9ECD7B348A2A4A243",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "build/design-audit-20260923/run-suite.ps1",
+        "new_path":  "tests/archive/design-audit-20260923/run-suite.ps1",
+        "sha256":  "678BF3A2874FCBACABC19B1706B841CA7BD9D2CD3F3D9731BD6AE9C98364F628",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "build/design-audit-20260923/run-asan.cmd",
+        "new_path":  "tests/archive/design-audit-20260923/run-asan.cmd",
+        "sha256":  "46FDEF472D29D1D3BDC433679154F2FC89719CF7E63297C438CAAF8DBE9A8ABC",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "build/design-audit-20260923/build-extra.cmd",
+        "new_path":  "tests/archive/design-audit-20260923/build-extra.cmd",
+        "sha256":  "9A7CAFE5A5D59081E3824290E78992AC5625862BBFCDEF3DDA46D36DB00E71F3",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "build/design-audit-20260923/build-asan.cmd",
+        "new_path":  "tests/archive/design-audit-20260923/build-asan.cmd",
+        "sha256":  "37007FEA9B92F016DBA8AC1D904F6B1AB0D60133D7EA4C5ADDC35DE22A8035A6",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "build/clice-validation/verify-project-config.ps1",
+        "new_path":  "tests/archive/clice-validation/verify-project-config.ps1",
+        "sha256":  "E695C51B0F9BD52B5CC3A9AC7BA579E34451DE7E2B4359566266F0223B8883C2",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "build/clice-validation/verify-lsp.ps1",
+        "new_path":  "tests/archive/clice-validation/verify-lsp.ps1",
+        "sha256":  "2224B9A05D4E43FE9FBB9C3709F3C15745B82E4F74814060DF19E4C6AF8F0F74",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "build/clice-validation/verify-dot-clice-config.ps1",
+        "new_path":  "tests/archive/clice-validation/verify-dot-clice-config.ps1",
+        "sha256":  "BFE04AB406AFB0C7FE29E132C643A9BE98107C45EFBED09C4645FB1D7A73BDA3",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "build/pause-acceptance-asan/run.cmd",
+        "new_path":  "tests/archive/pause-acceptance-asan/run.cmd",
+        "sha256":  "595D8B2EF1F42FCAD58BCB40182E621517190D855E48BF6C54E2B5F0C258F6FF",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "build/pause-acceptance-asan/run-resource-final.cmd",
+        "new_path":  "tests/archive/pause-acceptance-asan/run-resource-final.cmd",
+        "sha256":  "C4DF3075A88435DF8839DBA2CE336C237F3A18579FEDCD0CF0192107BDE76DDC",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "build/pause-acceptance-asan/run-lifetime-final.cmd",
+        "new_path":  "tests/archive/pause-acceptance-asan/run-lifetime-final.cmd",
+        "sha256":  "4344918997FB1445A53CE1051ED9B12E2775A660EA824410771FB916AFFD6329",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "build/pause-acceptance-asan/run-hooks-final.cmd",
+        "new_path":  "tests/archive/pause-acceptance-asan/run-hooks-final.cmd",
+        "sha256":  "BC5831B0ADA292DEA1E0E46FDB81121735846B48C773A5B56B6D761CC18D642F",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "build/pause-acceptance-asan/run-debug-candidate.cmd",
+        "new_path":  "tests/archive/pause-acceptance-asan/run-debug-candidate.cmd",
+        "sha256":  "9A4ADACAE2D529E0B10082B1089C3507A32B6D3DC5808EB01786B006B7746843",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "build/nested-model-review/run-model.cmd",
+        "new_path":  "tests/archive/nested-model-review/run-model.cmd",
+        "sha256":  "EA85AB014205CB0EA10685D65FD3F4314DC1738E8B0F3263EAA8294913C95539",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "build/nested-model-review/build-model.cmd",
+        "new_path":  "tests/archive/nested-model-review/build-model.cmd",
+        "sha256":  "06904454A76DAE612583C1366B48F44A1F0BA8CB584F00A79A558F92D28E7C2B",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "build/debug-release-stress/run.ps1",
+        "new_path":  "tests/archive/debug-release-stress/run.ps1",
+        "sha256":  "AAC218861F36EA2017C93749678DDABF0EE858D5A54737E6BABA1176186BB601",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "build/component-standardization-20260924/validate.cmd",
+        "new_path":  "tests/archive/component-standardization-20260924/validate.cmd",
+        "sha256":  "649F449ADFEC996116E3F907E6D1596B3EB2782B0EAACF8664F318AB1B32CEEF",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "build/pause-contract-audit-20260925/run-debug-proxy.ps1",
+        "new_path":  "tests/archive/pause-contract-audit-20260925/run-debug-proxy.ps1",
+        "sha256":  "3208D271D0250BDF288725EF04D1FDA602C5B1FA372494A6E7F7B7D398D5B3DE",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "build/pause-contract-audit-20260925/run-model.ps1",
+        "new_path":  "tests/archive/pause-contract-audit-20260925/run-model.ps1",
+        "sha256":  "87245ECD44A058F55C60F7664EBA585D84A48FD82114E6FA91611EEA6EAE78F7",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "build/build-callback-affine-lifetime-probe.cmd",
+        "new_path":  "tests/archive/build-callback-affine-lifetime-probe.cmd",
+        "sha256":  "5D71988BAA5C4B0AEC40B562232D4D8E02C9BE8F4B72603B23957F61AD01DD85",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "build/chain-model-probe/build-model.cmd",
+        "new_path":  "tests/archive/chain-model-probe/build-model.cmd",
+        "sha256":  "58ECF12ED3411E9F8F3DAE7436DF03A0D722A50B100A3780F1C52D06C36CB161",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "build/clice-validation/completion-workspace/simple.cpp",
+        "new_path":  "tests/archive/clice-validation/completion-workspace/simple.cpp",
+        "sha256":  "81B7F0ABD82F7ADCDAA047BB43DA235A8804E7C3FC6617A3BCF16DBBB47FA364",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "build/clice-validation/completion-workspace/completion.cpp",
+        "new_path":  "tests/archive/clice-validation/completion-workspace/completion.cpp",
+        "sha256":  "7648A1C7FB9ACB53B7301D5C9493A58DE75FF5B935D1894B3A9E6DCD6D5A9680",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "build/release-extreme-extra-asan/run.ps1",
+        "new_path":  "tests/archive/release-extreme-extra-asan/run.ps1",
+        "sha256":  "23C9942AF67DD2971B65B6349211344222D0F860CE2F6A6F551B06F9A17FC432",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "build/release-extreme-extra-asan/run-with-msvc-environment.cmd",
+        "new_path":  "tests/archive/release-extreme-extra-asan/run-with-msvc-environment.cmd",
+        "sha256":  "44078153CB818BF86E401CF9355749F2B9BDD01AD0AC38C7FA5B9D6B9373A23A",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "build/release-extreme-extra-asan/build.cmd",
+        "new_path":  "tests/archive/release-extreme-extra-asan/build.cmd",
+        "sha256":  "F56F6C62812163D0E6CD3EA0DC2D45EE11010637A6FF156F04A614F3F440B26C",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "build/pause-contract-audit-20260925/asan/summarize-contract-asan.ps1",
+        "new_path":  "tests/archive/pause-contract-audit-20260925/asan/summarize-contract-asan.ps1",
+        "sha256":  "B51D4F07F8580618DC69FBA453CB7CB29753420CD0DDA5ED7BABCADC81A397D3",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "build/pause-contract-audit-20260925/asan/run-contract-asan.ps1",
+        "new_path":  "tests/archive/pause-contract-audit-20260925/asan/run-contract-asan.ps1",
+        "sha256":  "92EFB7831ACF47DB4CFA187D39BA305A27A081BFDA886A0DB5272446FEC95BDA",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "build/pause-contract-audit-20260925/asan/host-failure/run-host-failure.ps1",
+        "new_path":  "tests/archive/pause-contract-audit-20260925/asan/host-failure/run-host-failure.ps1",
+        "sha256":  "836FF17647E479B01E682E668B770F332A5912838EE812664A4C021F2D512E01",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "build/pause-audit-20260925/tsan/verify-dependency.sh",
+        "new_path":  "tests/archive/pause-audit-20260925/tsan/verify-dependency.sh",
+        "sha256":  "91C8FA36E3F4C54FF3A073A32ACDB29B68357D032ABA89791B6FBAD39F37F745",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "build/pause-audit-20260925/tsan/tsan-positive-control.cpp",
+        "new_path":  "tests/archive/pause-audit-20260925/tsan/tsan-positive-control.cpp",
+        "sha256":  "7011CC01E7568D8CD07D8BD6E9281DC33A0318C0B797A0354F32A39CB33410F9",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "build/pause-audit-20260925/tsan/summarize.ps1",
+        "new_path":  "tests/archive/pause-audit-20260925/tsan/summarize.ps1",
+        "sha256":  "1B170C1576EBD49BFBCD7E884B0CA0FFFDC09DE92C8CEFE9D5EC9ACC352CDA92",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "build/pause-audit-20260925/tsan/run-positive-control.sh",
+        "new_path":  "tests/archive/pause-audit-20260925/tsan/run-positive-control.sh",
+        "sha256":  "0CADCC932A158C78884F726B19E75769644A270A08C3AC97E36534E783952ADC",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "build/pause-audit-20260925/tsan/run-concurrency.sh",
+        "new_path":  "tests/archive/pause-audit-20260925/tsan/run-concurrency.sh",
+        "sha256":  "50DEC11E49C8AFA5D6AB3B602E7C3ED026C4DAB0EA30FBC6FF0D1C9E5367DFE1",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "build/pause-audit-20260925/tsan/run-audit.sh",
+        "new_path":  "tests/archive/pause-audit-20260925/tsan/run-audit.sh",
+        "sha256":  "1E95D8262BEF730FEF50D615EFFC8841A3B4A2DA4E566EA8C0FBB13CADBF9DF7",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "build/pause-audit-20260925/tsan/collect-runtime.sh",
+        "new_path":  "tests/archive/pause-audit-20260925/tsan/collect-runtime.sh",
+        "sha256":  "6C4FF6EFEA1F1D631541CCA6681DDD99617AA3E1E2E592487406A64670536687",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "build/pause-audit-20260925/run-model.ps1",
+        "new_path":  "tests/archive/pause-audit-20260925/run-model.ps1",
+        "sha256":  "65E1949A36A0471FCC3C448F762DDB2FF79073FFB42067A7C6F8C8E3D36F62AE",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "build/pause-audit-20260925/outer-probe/build.cmd",
+        "new_path":  "tests/archive/pause-audit-20260925/outer-probe/build.cmd",
+        "sha256":  "8E5F8781EB0620D91DFC785024C86854CEA232646BBC0DF36C94F69268E7B6D8",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "build/pause-contract-audit-20260925/asan/notification-final/run-final-notification.ps1",
+        "new_path":  "tests/archive/pause-contract-audit-20260925/asan/notification-final/run-final-notification.ps1",
+        "sha256":  "22B4F1CF8DFBB8465650596E69769A9901A930412484A688644BCAA1A5AF8168",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "build/pause-contract-audit-20260925/asan/outer-lifetime/run-outer-lifetime.ps1",
+        "new_path":  "tests/archive/pause-contract-audit-20260925/asan/outer-lifetime/run-outer-lifetime.ps1",
+        "sha256":  "9253A2440E51C882BAFD27ADA933000DAA44194CF4EA885021D8E7146BE13557",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "build/pause-audit-20260925/new-probe/build.cmd",
+        "new_path":  "tests/archive/pause-audit-20260925/new-probe/build.cmd",
+        "sha256":  "02673AA44645EB02946EBEFDC3B47EE550EB04CF6F79B3579791E9B04FA90B26",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "build/pause-audit-20260925/layout-probe/layout.cpp",
+        "new_path":  "tests/archive/pause-audit-20260925/layout-probe/layout.cpp",
+        "sha256":  "BB06FAAA7550ABA05474C03693FB6BDC6842E1E58D0A52DEDAC5AC5A489719FC",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "build/pause-audit-20260925/layout-probe/build.cmd",
+        "new_path":  "tests/archive/pause-audit-20260925/layout-probe/build.cmd",
+        "sha256":  "59AFA968493E81CCABE6186094B3380917B8362BEEA2B5D66CD64BD463B282C3",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "build/pause-audit-20260925/host-probe/build.cmd",
+        "new_path":  "tests/archive/pause-audit-20260925/host-probe/build.cmd",
+        "sha256":  "BCB6A0144EE1F36AD483BBEA89BE16E67D3208276B608CFA0FF3E376FCE34011",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "build/stdexec-cmake-check-20260924/run-matrix.cmd",
+        "new_path":  "tests/archive/stdexec-cmake-check-20260924/run-matrix.cmd",
+        "sha256":  "B468AE8C124C9DBDD580BEBB32B64B24914A44FD0CBF458DE6BAEF4BA715D0BE",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "build/stdexec-cmake-check-20260924/run-extra.cmd",
+        "new_path":  "tests/archive/stdexec-cmake-check-20260924/run-extra.cmd",
+        "sha256":  "872A362AD4496360F112DD32073DE22EBAFCE7F4F596B0DBEE8007C40C6E1466",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "build/stdexec-cmake-check-20260924/run-matrix.ps1",
+        "new_path":  "tests/archive/stdexec-cmake-check-20260924/run-matrix.ps1",
+        "sha256":  "535D152E1588FB9AE959F236FB7457826A05209BFF912B0828713E7B32A9E008",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "build/standards-review-20260923/scheduler_stop_probe.cpp",
+        "new_path":  "tests/archive/standards-review-20260923/scheduler_stop_probe.cpp",
+        "sha256":  "C8279AE5C3DB9F42222D2747DA4272C92A58C915DCB55482E247F655BE48455D",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "build/standards-review-20260923/run-scheduler-stop-probe.cmd",
+        "new_path":  "tests/archive/standards-review-20260923/run-scheduler-stop-probe.cmd",
+        "sha256":  "126FCAEFE564086F2036CF95201BA45046E4C2ED4280EDFBEA170646C9B2C016",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "build/standards-review-20260923/build-scheduler-stop-probe.cmd",
+        "new_path":  "tests/archive/standards-review-20260923/build-scheduler-stop-probe.cmd",
+        "sha256":  "C464A0592D07285A6B30CB1A3C2B0F9CDE5197DF6D0480CFB2831E5C8FEA4ACF",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "build/standard-task-review-20260923/run-lifetime.cmd",
+        "new_path":  "tests/archive/standard-task-review-20260923/run-lifetime.cmd",
+        "sha256":  "203001CFA77D98347E03DF5404D27C62DF0B025EC823FBAC93DF37220FB5266A",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "build/standard-task-review-20260923/run-api.cmd",
+        "new_path":  "tests/archive/standard-task-review-20260923/run-api.cmd",
+        "sha256":  "3E25D121D5D30F28D96AC8CC3AC5C8558E458ECB5D7686B5F49B0C80FA504E14",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "build/standard-task-review-20260923/build-lifetime.cmd",
+        "new_path":  "tests/archive/standard-task-review-20260923/build-lifetime.cmd",
+        "sha256":  "4769F72E484B0CAC762AA58324D041C1C2AF1FC0AF39A88B214C964343FA2C58",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "build/standard-task-review-20260923/build-api.cmd",
+        "new_path":  "tests/archive/standard-task-review-20260923/build-api.cmd",
+        "sha256":  "1CD8E27A1EF9D6AB85E30048E1D27A627233C5166C9D7CDE11E05903B3C7AE38",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "build/sender-agent/build.cmd",
+        "new_path":  "tests/archive/sender-agent/build.cmd",
+        "sha256":  "D7112CA1A45ABDE91F5F0714695893F3A88ED8F94AE6DE6E93763C1B1B7E2D6B",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "build/chain-audit-20260923/debug-asan.cmd",
+        "new_path":  "tests/archive/chain-audit-20260923/debug-asan.cmd",
+        "sha256":  "B06BA7AE32BA52CBE60460D99ADDDC7F2BEC07B3821A5ACE0C5223AFB0914ADE",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "build/chain-audit-20260923/build-tests.cmd",
+        "new_path":  "tests/archive/chain-audit-20260923/build-tests.cmd",
+        "sha256":  "7C5128F482170CFA3B3086B1C870163123D540669ECD842ADBD29BDAB8DE6436",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "build/chain-audit-20260923/debug-asan.ps1",
+        "new_path":  "tests/archive/chain-audit-20260923/debug-asan.ps1",
+        "sha256":  "731D7AB71E0FCA0C8FF657C3528D10879B413B4977D99240B71C5A5E1E711A0A",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "build/chain-audit-20260923/refine-asan.ps1",
+        "new_path":  "tests/archive/chain-audit-20260923/refine-asan.ps1",
+        "sha256":  "F5D133C1703EE49E256B4D18BA41123CE66CC19BA2AFD0ADBE4D371B5BAE4191",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "build/chain-audit-20260923/refine-asan.cmd",
+        "new_path":  "tests/archive/chain-audit-20260923/refine-asan.cmd",
+        "sha256":  "3247403B7DB082B67BC30DFA91F61960E78C229E57D839F189A5B44EB839A393",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "build/chain-audit-20260923/run-campaign.cmd",
+        "new_path":  "tests/archive/chain-audit-20260923/run-campaign.cmd",
+        "sha256":  "68A11D7D6F3DC18DB4971F94AAB130213049AA42B09515B1C3CD3A62CF4C26DC",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "build/pause-audit-20260925/asan/run-extra-asan.ps1",
+        "new_path":  "tests/archive/pause-audit-20260925/asan/run-extra-asan.ps1",
+        "sha256":  "71FC035C8FC41A38F00F6CAA5440FA643BE39712F02D14F682BB4B4183D0ABF3",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "build/pause-audit-20260925/asan/run-asan-audit.ps1",
+        "new_path":  "tests/archive/pause-audit-20260925/asan/run-asan-audit.ps1",
+        "sha256":  "5179CC9DDDF52BF0DA1F89B94B803DC7E3E653797465CB7BAEF9339936A95848",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "build/pause-audit-20260925/asan/run-asan-audit.initial.ps1",
+        "new_path":  "tests/archive/pause-audit-20260925/asan/run-asan-audit.initial.ps1",
+        "sha256":  "88BE426DC8ACFE58E5D40EFC091C8CFD6DA93ED56545DD7179B622998348B6AB",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "scripts/run-chain-stress.ps1",
+        "new_path":  "tests/scripts/run-chain-stress.ps1",
+        "sha256":  "5994F6C0D6D84371DF6344246913C1FB8300213865FE1AED563C204F326230AA",
+        "kind":  "runner"
+    },
+    {
+        "old_path":  "scripts/run-pause-release-stress.ps1",
+        "new_path":  "tests/scripts/run-pause-release-stress.ps1",
+        "sha256":  "4A56BE34AF37262719F5553B147C5E07451E6D1B57B6ABE2CFD41D43EDE518DA",
+        "kind":  "runner"
+    },
+    {
+        "old_path":  "scripts/run-pause-stress.ps1",
+        "new_path":  "tests/scripts/run-pause-stress.ps1",
+        "sha256":  "5EC445299378AFD278EA7EBF1ABFC35AA2B78D31BD47AB65EF5C08538F13872E",
+        "kind":  "runner"
+    },
+    {
+        "old_path":  "scripts/run-pause-tsan.sh",
+        "new_path":  "tests/scripts/run-pause-tsan.sh",
+        "sha256":  "F790A8EC02271B30588443CCF9CA190A9EE4814CABE4A38E36CFC1252B77F2E7",
+        "kind":  "runner"
+    },
+    {
+        "old_path":  "scripts/summarize-pause-contract.ps1",
+        "new_path":  "tests/scripts/summarize-pause-contract.ps1",
+        "sha256":  "C017975DD7313568A19D9349321826864A852487512D3FC25B08684A5F6AB34A",
+        "kind":  "runner"
+    },
+    {
+        "old_path":  "cmake/check_stdexec.cpp",
+        "new_path":  "tests/check_stdexec.cpp",
+        "sha256":  "939AF279FDC220CB647A8E013B29F030B63D0BAD1BF0DFF1B384807C56DB61F0",
+        "kind":  "probe"
+    },
+    {
+        "old_path":  "main.cpp",
+        "new_path":  "tests/archive/root/main.cpp",
+        "sha256":  "526522AC6A066D3C1ABE8043DF166A2E3D8B34E8AF2EFB078E852657EE40F688",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "build/chain-audit-20260923/debug-asan-exceptions.txt",
+        "new_path":  "tests/archive/chain-audit-20260923/debug-asan-exceptions.txt",
+        "sha256":  "21A7C26179D20E176582A6D282443601B7BC65B9527DAEE617F10D434E9439A9",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "build/chain-audit-20260923/debug-asan-target-exceptions.txt",
+        "new_path":  "tests/archive/chain-audit-20260923/debug-asan-target-exceptions.txt",
+        "sha256":  "4643E1D4EC1350511EA713B9666BF68E4072F76A1261CC138689A0F8D50FC728",
+        "kind":  "archive"
+    },
+    {
+        "old_path":  "build/clice-validation/completion-workspace/clice.toml",
+        "new_path":  "tests/archive/clice-validation/completion-workspace/clice.toml",
+        "sha256":  "5AD3ED8FB6FD36FFB8338BA6862CB4EF80C2F084EFDAFCCE7F5C71D17FE048B6",
+        "kind":  "archive-fixture"
+    },
+    {
+        "old_path":  "build/clice-validation/completion-workspace/debug/compile_commands.json",
+        "new_path":  "tests/archive/clice-validation/completion-workspace/debug/compile_commands.json",
+        "sha256":  "975C4AF5A723BCF524088BB7CB332EA5229D2D3C39DA14D8A06288BE7FC69D08",
+        "kind":  "archive-fixture"
+    },
+    {
+        "old_path":  "build/clice-validation/completion-workspace/release/compile_commands.json",
+        "new_path":  "tests/archive/clice-validation/completion-workspace/release/compile_commands.json",
+        "sha256":  "861ED85F3A7AACDAB35A622D6CE267DC5A24542BF452D7CD94B054B98BFAB4F9",
+        "kind":  "archive-fixture"
+    }
+]

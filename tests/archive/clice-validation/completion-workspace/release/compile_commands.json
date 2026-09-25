@@ -1,0 +1,8 @@
+[
+    {
+        "directory":  "D:/workspace/pause/build/msvc-release",
+        "command":  "C:\\PROGRA~1\\MICROS~2\\2022\\COMMUN~1\\VC\\Tools\\MSVC\\1444~1.352\\bin\\Hostx64\\x64\\cl.exe  /nologo /TP -DSTDEXEC_ENABLE_WINDOWS_THREAD_POOL -ID:\\workspace\\pause -external:ID:\\workspace\\pause\\build\\msvc-debug\\_deps\\stdexec-src\\include -external:ID:\\workspace\\pause\\build\\msvc-release\\_deps\\stdexec-build\\include -external:W0 /DWIN32 /D_WINDOWS /EHsc /O2 /Ob2 /DNDEBUG -std:c++latest -MD /EHsc /Zc:__cplusplus /Zc:preprocessor /Zc:externConstexpr /bigobj /FoCMakeFiles\\pause_header_compile.dir\\tests\\pause_header_compile.cpp.obj /FdCMakeFiles\\pause_header_compile.dir\\ /FS -c D:\\workspace\\pause\\tests\\archive\\clice-validation\\completion-workspace\\completion.cpp",
+        "file":  "D:\\workspace\\pause\\tests\\archive\\clice-validation\\completion-workspace\\completion.cpp",
+        "output":  "CMakeFiles\\pause_header_compile.dir\\tests\\pause_header_compile.cpp.obj"
+    }
+]

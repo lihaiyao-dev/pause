@@ -1,0 +1,72 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Pause: simple workflow (LLDB DAP)",
+      "type": "lldb-dap",
+      "request": "launch",
+      "program": "${workspaceFolder}/build/msvc-debug/pause_simple_workflow.exe",
+      "args": [],
+      "cwd": "${workspaceFolder}",
+      "console": "internalConsole",
+      "preLaunchTask": "Pause: build Debug examples",
+      "preRunCommands": ["breakpoint set --name main"]
+    },
+    {
+      "name": "Pause: control + work task (LLDB DAP)",
+      "type": "lldb-dap",
+      "request": "launch",
+      "program": "${workspaceFolder}/build/msvc-debug/pause_controlled_workflow.exe",
+      "args": ["${input:controlledScenario}"],
+      "cwd": "${workspaceFolder}",
+      "console": "internalConsole",
+      "preLaunchTask": "Pause: build Debug examples",
+      "preRunCommands": ["breakpoint set --name main"]
+    },
+    {
+      "name": "Pause: algorithms (LLDB DAP)",
+      "type": "lldb-dap",
+      "request": "launch",
+      "program": "${workspaceFolder}/build/msvc-debug/pause_workflows.exe",
+      "args": ["${input:workflowScenario}"],
+      "cwd": "${workspaceFolder}",
+      "console": "internalConsole",
+      "preLaunchTask": "Pause: build Debug examples",
+      "preRunCommands": ["breakpoint set --name main"]
+    },
+    {
+      "name": "Pause: dynamic task tree (LLDB DAP)",
+      "type": "lldb-dap",
+      "request": "launch",
+      "program": "${workspaceFolder}/build/msvc-debug/pause_independent_jobs.exe",
+      "args": ["--dynamic", "${input:partitionCount}"],
+      "cwd": "${workspaceFolder}",
+      "console": "internalConsole",
+      "preLaunchTask": "Pause: build Debug examples",
+      "preRunCommands": ["breakpoint set --name main"]
+    }
+  ],
+  "inputs": [
+    {
+      "id": "controlledScenario",
+      "type": "pickString",
+      "description": "Controlled workflow scenario",
+      "options": ["step", "continue", "skip-optional", "cancel", "work-error", "control-error"],
+      "default": "step"
+    },
+    {
+      "id": "workflowScenario",
+      "type": "pickString",
+      "description": "Algorithm example",
+      "options": ["parallel", "sender-pipeline", "bulk", "race", "pipeline", "single-step", "nested", "cancel", "prestop", "error", "stopped", "optional", "optional-value", "optional-error"],
+      "default": "parallel"
+    },
+    {
+      "id": "partitionCount",
+      "type": "pickString",
+      "description": "Dynamic partition count",
+      "options": ["2", "3", "8", "32"],
+      "default": "8"
+    }
+  ]
+}

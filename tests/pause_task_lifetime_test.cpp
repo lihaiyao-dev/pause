@@ -1,3 +1,19 @@
+﻿/* 测试项目：pause_task_lifetime_test
+ * 性质: 真实 Pause 记录、task 帧与 when_all/optional 宿主取消的生命周期测试.
+ * 测试项目:
+ * - Pause stopped 转 optional 后保留子帧: callback 先撤销参与责任, 但记录/帧暂未析构;
+ *   sibling 可继续暂停/恢复, 被保留记录最终退休时只提交一次 revision.
+ * - 验证子记录按本用例的 B、A 次序退休, 均早于父重入和父记录退休;
+ *   父重入重新承担一次责任, 仅未取消的子分支及父分支继续业务, 最终 live 归零.
+ * - optional 宿主 starts_on 预取消: 包装 task 和其子 task 均未进入,
+ *   stopped 传到 when_all 并取消正在 Pause 等待的兄弟, 所有记录最终退休.
+ * - optional 已将前一 stopped 转为空值后发生新的可取消等待: 后续 scheduler 的 stopped
+ *   仍传到 when_all 并取消兄弟, 不被先前 optional 转换吞掉, 业务不再继续.
+ * 运行: ctest --test-dir <build> -R '^pause_task_lifetime_test$' --output-on-failure.
+ * CLI: --iterations N (默认 100, 范围 1..1000000), 每轮执行 3 个生命周期场景.
+ * 边界: 通过公开 snapshot、帧析构见证和独立协调线程观察时序; 不访问 Pause 私有记录,
+ *   不使用 sleep 建立顺序, 不让完成线程等待自身 callback 析构.
+ */
 #include "pause_sender_test_support.hpp"
 
 #include <array>
@@ -19,7 +35,7 @@ struct Signal {
 };
 
 template<class Predicate>
-pause::PauseSnapshot await_snapshot(Signal& changed, const pause::PauseSource& source,
+coop_pause::PauseSnapshot await_snapshot(Signal& changed, const coop_pause::PauseSource& source,
                                     Predicate predicate)
 {
     for (;;) {
@@ -32,12 +48,12 @@ pause::PauseSnapshot await_snapshot(Signal& changed, const pause::PauseSource& s
 
 struct Retirement {
     std::atomic<bool> retired{false};
-    pause::PauseSnapshot snapshot{};
+    coop_pause::PauseSnapshot snapshot{};
     int order = 0;
 };
 
 struct Lifetime {
-    pause::PauseSource* source;
+    coop_pause::PauseSource* source;
     std::array<Retirement, 3> records; // A, B, parent.
     std::atomic<int> order{0};
     std::array<std::atomic<bool>, 2> entered{};
@@ -70,8 +86,8 @@ struct OwnedBranch {
     // Reverse member destruction retires the actual Pause record first, then
     // publishes the owning frame's witness. No private Pause state is queried.
     Witness witness;
-    pause::PauseBranch branch;
-    OwnedBranch(Lifetime& state, int index, pause::PauseBranch value) noexcept
+    coop_pause::PauseBranch branch;
+    OwnedBranch(Lifetime& state, int index, coop_pause::PauseBranch value) noexcept
         : witness(state, index), branch(std::move(value))
     {}
     OwnedBranch(const OwnedBranch&) = delete;
@@ -190,7 +206,7 @@ stdexec::task<void> retained_parent(OwnedBranch parent, Lifetime& lifetime,
 void retained_pause_stopped_frame()
 {
     Signal changed;
-    pause::PauseSource source(pause::AdvanceMode::Continuous, [&]() noexcept { changed.notify(); });
+    coop_pause::PauseSource source(coop_pause::AdvanceMode::Continuous, [&]() noexcept { changed.notify(); });
     Lifetime lifetime{&source};
     auto root = source.make_root_branch();
     CHECK(root);
@@ -208,13 +224,13 @@ void retained_pause_stopped_frame()
     a.finish();
     b.finish();
     const auto paused = await_snapshot(changed, source, [](const auto& state) {
-        return state.phase == pause::GatePhase::Paused;
+        return state.phase == coop_pause::GatePhase::Paused;
     });
     CHECK(paused.live_branch_count == 2 && paused.waiting_branch_count == 2);
     CHECK(!independent_a.request_stop());
     converted.wait();
     const auto withdrawn = source.snapshot();
-    CHECK(withdrawn.phase == pause::GatePhase::Paused);
+    CHECK(withdrawn.phase == coop_pause::GatePhase::Paused);
     CHECK(withdrawn.live_branch_count == 1 && withdrawn.waiting_branch_count == 1);
     CHECK(withdrawn.paused_epoch == paused.paused_epoch);
     CHECK(withdrawn.revision == paused.revision + 1);
@@ -224,7 +240,7 @@ void retained_pause_stopped_frame()
     CHECK(!lifetime.records[1].retired.load(std::memory_order_acquire));
     CHECK(!lifetime.records[2].retired.load(std::memory_order_acquire));
     CHECK(lifetime.parent_business == 0);
-    CHECK(source.resume(*withdrawn.paused_epoch, pause::AdvanceMode::Continuous));
+    CHECK(source.resume(*withdrawn.paused_epoch, coop_pause::AdvanceMode::Continuous));
     runner.join();
     CHECK(host.receiver.result == Completion::Value);
     const auto& retired_a = lifetime.records[0];
@@ -256,7 +272,7 @@ stdexec::task<void> join_without_business(First first, Second second,
 void optional_host_precancelled()
 {
     Signal changed;
-    pause::PauseSource source(pause::AdvanceMode::Continuous, [&]() noexcept { changed.notify(); });
+    coop_pause::PauseSource source(coop_pause::AdvanceMode::Continuous, [&]() noexcept { changed.notify(); });
     Lifetime lifetime{&source};
     auto root = source.make_root_branch();
     CHECK(root);
@@ -277,7 +293,7 @@ void optional_host_precancelled()
     const auto waiting = await_snapshot(changed, source, [](const auto& state) {
         return state.waiting_branch_count == 1;
     });
-    CHECK(waiting.phase == pause::GatePhase::Collecting && waiting.live_branch_count == 2);
+    CHECK(waiting.phase == coop_pause::GatePhase::Collecting && waiting.live_branch_count == 2);
     CHECK(lifetime.entered[1] && !lifetime.entered[0] && !lifetime.wrapper_entered);
     std::jthread first_runner([&] { first_loop.run(); });
     // The pre-cancelled starts_on stops before optional_task enters. That
@@ -289,14 +305,14 @@ void optional_host_precancelled()
     CHECK(!lifetime.entered[0] && !lifetime.wrapper_entered);
     CHECK(lifetime.business[0] == 0 && lifetime.business[1] == 0);
     CHECK(lifetime.records[0].retired && lifetime.records[1].retired);
-    CHECK(source.snapshot().phase == pause::GatePhase::Paused);
+    CHECK(source.snapshot().phase == coop_pause::GatePhase::Paused);
     CHECK(source.snapshot().live_branch_count == 0 && source.snapshot().waiting_branch_count == 0);
 }
 
 void optional_host_later_cancellable_wait()
 {
     Signal changed;
-    pause::PauseSource source(pause::AdvanceMode::Continuous, [&]() noexcept { changed.notify(); });
+    coop_pause::PauseSource source(coop_pause::AdvanceMode::Continuous, [&]() noexcept { changed.notify(); });
     Lifetime lifetime{&source};
     auto root = source.make_root_branch();
     CHECK(root);
@@ -327,7 +343,7 @@ void optional_host_later_cancellable_wait()
     CHECK(source.request_pause());
     b.finish();
     const auto paused = await_snapshot(changed, source, [](const auto& state) {
-        return state.phase == pause::GatePhase::Paused;
+        return state.phase == coop_pause::GatePhase::Paused;
     });
     CHECK(paused.live_branch_count == 1 && paused.waiting_branch_count == 1);
     CHECK(!independent_a.request_stop());
@@ -342,7 +358,7 @@ void optional_host_later_cancellable_wait()
     CHECK(host.receiver.result == Completion::Stopped && !continued);
     CHECK(lifetime.business[0] == 0 && lifetime.business[1] == 0);
     CHECK(lifetime.records[0].retired && lifetime.records[1].retired);
-    CHECK(source.snapshot().phase == pause::GatePhase::Paused);
+    CHECK(source.snapshot().phase == coop_pause::GatePhase::Paused);
     CHECK(source.snapshot().live_branch_count == 0 && source.snapshot().waiting_branch_count == 0);
 }
 } // namespace

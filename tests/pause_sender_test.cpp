@@ -1,3 +1,22 @@
+﻿/* 测试项目：pause_sender_test
+ * 性质: 真实 Pause sender 协议、调度次数、取消路径与 operation 生命周期测试.
+ * 测试项目:
+ * - 编译期检查 C++26 sender/operation_state 协议、完成签名和环境相关的亲和完成属性.
+ * - public connect 复制 receiver 抛异常: 不完成、不调度、不改变快照或通知, 随后可重试成功.
+ * - Open 内联通过与 Paused 恢复: 覆盖空/非空 stop token、两种恢复模式和完成时自销毁;
+ *   Open 不调度, 恢复恰好调度一次并保留原 stop token, 入队本身不代表完成.
+ * - 预取消及等待中取消: 覆盖 Open、控制暂停和 SingleStep; 返回 stopped 并撤销参与责任.
+ * - 恢复后入队再取消: 由真实 run_loop 检查 stop, 完成 stopped 且计数归零.
+ * - start 通知尾部仍在执行时恢复/取消并自销毁 operation: 不重复完成或访问已销毁对象.
+ * - 完成回调重入另一个暂停点: 两次内联 value, 无额外调度.
+ * - task 单独运行/置于 when_all: 比较 Open、Resume、Stop、QueuedStop 的业务继续情况,
+ *   原始调度与宿主亲和补跳次数, 验证最终完成和继续执行回到宿主线程.
+ * - 同一 Source 的两个 run_loop: 各分支恢复到各自资源, 每个资源仅增加一次恢复调度.
+ * 运行: ctest --test-dir <build> -R '^pause_sender_test$' --output-on-failure.
+ * CLI: --iterations N 控制 15 个线程场景 (默认 100), --ordinary-iterations N 控制
+ *      28 个普通场景 (默认跟随 iterations); 次数范围 1..1000000.
+ * 边界: 使用固定 stdexec 的真实 run_loop 加透明计数适配器; 通知阻塞仅用于测试故障窗口.
+ */
 #include "pause_sender_test_support.hpp"
 
 #include <stdexcept>
@@ -6,8 +25,33 @@ namespace {
 using namespace pause_sender_test;
 int host_schedule_calls = 0;
 
-using Sender = decltype(std::declval<pause::PauseBranch&>().suspend_point());
+using Sender = decltype(std::declval<coop_pause::PauseBranch&>().suspend_point());
 using Env = decltype(std::declval<Receiver>().get_env());
+
+// Check the C++26 protocol directly: the pinned stdexec also accepts legacy
+// completion-signature aliases and operation states without an opt-in tag.
+using RawSender = coop_pause::detail::RawSuspendSender;
+using RawSignatures = stdexec::completion_signatures<
+    stdexec::set_value_t(coop_pause::detail::InlinePass),
+    stdexec::set_value_t(coop_pause::detail::ResumedPass),
+    stdexec::set_stopped_t()>;
+static_assert(std::same_as<decltype(RawSender::get_completion_signatures<RawSender>()),
+                           RawSignatures>);
+static_assert(std::same_as<decltype(RawSender::get_completion_signatures<RawSender, Env>()),
+                           RawSignatures>);
+static_assert(std::same_as<stdexec::completion_signatures_of_t<RawSender>, RawSignatures>);
+static_assert(std::same_as<stdexec::completion_signatures_of_t<const RawSender&, Env>,
+                           RawSignatures>);
+
+struct RawReceiver : Receiver {
+    void set_value(coop_pause::detail::InlinePass) noexcept {}
+    void set_value(coop_pause::detail::ResumedPass) noexcept {}
+};
+using RawOperation = stdexec::connect_result_t<RawSender, RawReceiver>;
+static_assert(std::same_as<typename RawOperation::operation_state_concept,
+                           stdexec::operation_state_tag>);
+static_assert(stdexec::operation_state<RawOperation>);
+
 static_assert(exec::get_completion_behavior<stdexec::set_value_t, Sender, Env>()
     == (exec::completion_behavior::inline_completion
         | exec::completion_behavior::asynchronous_affine));
@@ -32,7 +76,7 @@ void public_connect_failure()
     SchedulerState scheduler;
     stdexec::inplace_stop_source stop;
     int notifications = 0;
-    pause::PauseSource source(pause::AdvanceMode::Continuous, [&]() noexcept { ++notifications; });
+    coop_pause::PauseSource source(coop_pause::AdvanceMode::Continuous, [&]() noexcept { ++notifications; });
     auto root = source.make_root_branch(); CHECK(root);
     ReceiverState control{&scheduler, stop.get_token()};
     bool armed = false;
@@ -60,11 +104,11 @@ void public_connect_failure()
 }
 
 void raw_route(bool closed, bool cancel, bool empty_token, bool self_destroy,
-               pause::AdvanceMode mode = pause::AdvanceMode::SingleStep)
+               coop_pause::AdvanceMode mode = coop_pause::AdvanceMode::SingleStep)
 {
     SchedulerState scheduler;
     stdexec::inplace_stop_source stop;
-    pause::PauseSource source(pause::AdvanceMode::Continuous, []() noexcept {});
+    coop_pause::PauseSource source(coop_pause::AdvanceMode::Continuous, []() noexcept {});
     auto root = source.make_root_branch(); CHECK(root);
     if (closed) CHECK(source.request_pause());
     ReceiverState control{&scheduler, empty_token ? stdexec::inplace_stop_token{} : stop.get_token()};
@@ -88,7 +132,7 @@ void raw_route(bool closed, bool cancel, bool empty_token, bool self_destroy,
         } else {
             CHECK(control.result == Completion::None);
             auto snap = source.snapshot();
-            CHECK(snap.phase == pause::GatePhase::Paused && snap.waiting_branch_count == 1);
+            CHECK(snap.phase == coop_pause::GatePhase::Paused && snap.waiting_branch_count == 1);
             CHECK(source.resume(*snap.paused_epoch, mode));
             CHECK(scheduler.calls == 1 && scheduler.starts == 1);
             CHECK(control.result == Completion::None); // Queue entry is not completion.
@@ -104,8 +148,8 @@ void raw_route(bool closed, bool cancel, bool empty_token, bool self_destroy,
     if (cancel) {
         const auto snap = source.snapshot();
         CHECK(snap.live_branch_count == 0);
-        CHECK(snap.phase == (mode == pause::AdvanceMode::SingleStep
-            ? pause::GatePhase::Paused : pause::GatePhase::Open));
+        CHECK(snap.phase == (mode == coop_pause::AdvanceMode::SingleStep
+            ? coop_pause::GatePhase::Paused : coop_pause::GatePhase::Open));
         CHECK(snap.waiting_branch_count == 0);
     }
     if (!self_destroy) delete operation;
@@ -115,8 +159,8 @@ void callback_stop(bool prestopped, bool self_destroy, int gate = 2)
 {
     SchedulerState scheduler;
     stdexec::inplace_stop_source stop;
-    pause::PauseSource source(gate == 2 ? pause::AdvanceMode::SingleStep
-                                      : pause::AdvanceMode::Continuous, []() noexcept {});
+    coop_pause::PauseSource source(gate == 2 ? coop_pause::AdvanceMode::SingleStep
+                                      : coop_pause::AdvanceMode::Continuous, []() noexcept {});
     auto root = source.make_root_branch(); CHECK(root);
     if (gate == 1) CHECK(source.request_pause());
     ReceiverState control{&scheduler, stop.get_token()};
@@ -148,7 +192,7 @@ void waiting_start_tail(bool cancel)
     std::atomic<bool> armed{false};
     // Test-only fault-injection gate. Production notifiers must not block;
     // here an independent coordinator releases the tail to verify lifetime.
-    pause::PauseSource source(pause::AdvanceMode::SingleStep, [&]() noexcept {
+    coop_pause::PauseSource source(coop_pause::AdvanceMode::SingleStep, [&]() noexcept {
         if (armed.exchange(false)) notification.hold();
     });
     auto root = source.make_root_branch(); CHECK(root);
@@ -170,7 +214,7 @@ void waiting_start_tail(bool cancel)
         CHECK(control.result == Completion::Stopped && control.operation == nullptr);
         CHECK(source.snapshot().live_branch_count == 0);
     } else {
-        CHECK(source.resume(*source.snapshot().paused_epoch, pause::AdvanceMode::Continuous));
+        CHECK(source.resume(*source.snapshot().paused_epoch, coop_pause::AdvanceMode::Continuous));
         CHECK(scheduler.calls == 1 && scheduler.starts == 1);
         CHECK(control.result == Completion::None);
     }
@@ -183,7 +227,7 @@ void waiting_start_tail(bool cancel)
 void completion_reenters()
 {
     SchedulerState scheduler;
-    pause::PauseSource source(pause::AdvanceMode::Continuous, []() noexcept {});
+    coop_pause::PauseSource source(coop_pause::AdvanceMode::Continuous, []() noexcept {});
     auto root = source.make_root_branch(); CHECK(root);
     ReceiverState control{&scheduler, {}};
     int values = 0;
@@ -201,7 +245,7 @@ struct TaskControl {
     SchedulerState scheduler;
     stdexec::inplace_stop_source stop;
     ReceiverState receiver{&scheduler, stop.get_token()};
-    pause::PauseBranch* branch = nullptr;
+    coop_pause::PauseBranch* branch = nullptr;
     stdexec::inplace_stop_token task_token;
     std::atomic<bool> continued{false};
     std::thread::id continuation_thread;
@@ -227,12 +271,12 @@ void run_task(TaskControl& control, S sender) {
     control.scheduler.loop.run();
 }
 void task_route(Route route, bool when_all,
-                pause::AdvanceMode mode = pause::AdvanceMode::SingleStep)
+                coop_pause::AdvanceMode mode = coop_pause::AdvanceMode::SingleStep)
 {
     TaskControl control;
     Gate startup, original_stopped;
     const bool open = route == Route::Open;
-    pause::PauseSource source(open ? pause::AdvanceMode::Continuous : pause::AdvanceMode::SingleStep,
+    coop_pause::PauseSource source(open ? coop_pause::AdvanceMode::Continuous : coop_pause::AdvanceMode::SingleStep,
                               []() noexcept {});
     auto root = source.make_root_branch(); CHECK(root);
     control.branch = &*root;
@@ -259,8 +303,8 @@ void task_route(Route route, bool when_all,
         if (route == Route::Stop || route == Route::QueuedStop) {
             CHECK(source.snapshot().live_branch_count == 0);
             CHECK(source.snapshot().phase == (route == Route::QueuedStop
-                  && mode == pause::AdvanceMode::Continuous
-                ? pause::GatePhase::Open : pause::GatePhase::Paused));
+                  && mode == coop_pause::AdvanceMode::Continuous
+                ? coop_pause::GatePhase::Open : coop_pause::GatePhase::Paused));
             CHECK(source.snapshot().waiting_branch_count == 0);
             CHECK(control.receiver.result == Completion::None && !control.continued);
         }
@@ -290,7 +334,7 @@ void two_resources()
     Gate a, b;
     first.scheduler.after_first_value = &a;
     second.scheduler.after_first_value = &b;
-    pause::PauseSource source(pause::AdvanceMode::Continuous, []() noexcept {});
+    coop_pause::PauseSource source(coop_pause::AdvanceMode::Continuous, []() noexcept {});
     auto root = source.make_root_branch(); CHECK(root);
     auto other = source.make_branch(); CHECK(other);
     first.branch = &*root; second.branch = &*other;
@@ -299,7 +343,7 @@ void two_resources()
     std::jthread two([&] { run_task(second, pause_task(second)); });
     a.entered.wait(); b.entered.wait();
     CHECK(source.snapshot().waiting_branch_count == 2);
-    CHECK(source.resume(*source.snapshot().paused_epoch, pause::AdvanceMode::Continuous));
+    CHECK(source.resume(*source.snapshot().paused_epoch, coop_pause::AdvanceMode::Continuous));
     a.release.count_down(); b.release.count_down();
     one.join(); two.join();
     CHECK(first.continued && second.continued);
@@ -311,37 +355,55 @@ void two_resources()
 } // namespace
 
 int main(int argc, char** argv) {
-    const int count = iterations(argc, argv);
+    int count = 100, ordinary_count = 0;
+    CHECK(argc % 2 == 1);
+    for (int index = 1; index < argc; index += 2) {
+        const std::string_view option(argv[index]), value(argv[index + 1]);
+        int parsed = 0;
+        const auto [end, error] = std::from_chars(value.data(), value.data() + value.size(), parsed);
+        CHECK(error == std::errc{} && end == value.data() + value.size() && parsed > 0 && parsed <= 1000000);
+        if (option == "--iterations") count = parsed;
+        else { CHECK(option == "--ordinary-iterations"); ordinary_count = parsed; }
+    }
+    if (ordinary_count == 0) ordinary_count = count;
     TaskControl baseline;
     run_task(baseline, empty_task());
     CHECK(baseline.scheduler.starts == 1);
     host_schedule_calls = baseline.scheduler.calls;
-    for (int i = 0; i != count; ++i) {
+    for (int i = 0; i != ordinary_count; ++i) {
         for (bool destroy : {false, true}) {
             raw_route(false, false, false, destroy);
             raw_route(false, false, true, destroy);
             raw_route(true, false, false, destroy);
             raw_route(true, false, true, destroy);
             raw_route(true, true, false, destroy);
-            raw_route(true, false, false, destroy, pause::AdvanceMode::Continuous);
-            raw_route(true, false, true, destroy, pause::AdvanceMode::Continuous);
-            raw_route(true, true, false, destroy, pause::AdvanceMode::Continuous);
+            raw_route(true, false, false, destroy, coop_pause::AdvanceMode::Continuous);
+            raw_route(true, false, true, destroy, coop_pause::AdvanceMode::Continuous);
+            raw_route(true, true, false, destroy, coop_pause::AdvanceMode::Continuous);
             callback_stop(false, destroy);
             callback_stop(true, destroy);
             callback_stop(true, destroy, 0); // Open: pre-cancel wins before InlinePass.
             callback_stop(true, destroy, 1); // ControlRequest Collecting.
             callback_stop(false, destroy, 1);
         }
-        waiting_start_tail(false); waiting_start_tail(true);
         completion_reenters();
         public_connect_failure();
+    }
+    std::printf("PASS: sender ordinary 28 cases x %d iterations\n", ordinary_count);
+    std::fflush(stdout);
+    for (int i = 0; i != count; ++i) {
+        waiting_start_tail(false); waiting_start_tail(true);
         for (bool join : {false, true})
             for (auto route : {Route::Open, Route::Resume, Route::Stop, Route::QueuedStop})
                 task_route(route, join);
         for (bool join : {false, true})
             for (auto route : {Route::Resume, Route::QueuedStop})
-                task_route(route, join, pause::AdvanceMode::Continuous);
+                task_route(route, join, coop_pause::AdvanceMode::Continuous);
         two_resources();
     }
-    std::printf("PASS: 43 real Pause sender/scheduler/lifetime cases x %d iterations\n", count);
+    std::printf("PASS: sender threaded 15 cases x %d iterations\n", count);
+    if (ordinary_count == count)
+        std::printf("PASS: 43 real Pause sender/scheduler/lifetime cases x %d iterations\n", count);
+    else
+        std::printf("PASS: %d real Pause sender/scheduler/lifetime cases\n", ordinary_count * 28 + count * 15);
 }

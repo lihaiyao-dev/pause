@@ -1,3 +1,21 @@
+﻿/* 测试项目：pause_batch_extreme_test
+ * 目的: 使用真实 Pause 和 run_loop 检查批量恢复, 排队后取消及完成回调重入.
+ * 测试项:
+ * - matrix: 单工作线程, 宽度 1/2/8/64/256, Continuous/SingleStep,
+ *   分别组合不取消/全部取消/交替取消/首尾取消, 共 40 个参数项.
+ * - parallel: 4 个工作线程, 宽度 64, 上述模式和取消组合, 共 8 个参数项.
+ * - reentrant: 宽度 2/64 和两种恢复模式; 首个接收者销毁自身 operation,
+ *   取消兄弟并再次进入暂停点, 其余批节点此时尚未全部交给调度器, 共 4 项.
+ * 关键预期: 每批节点只调度/完成一次, 回到所属线程; 排队取消不会提前完成或
+ * 改写 revision; 单步幸存者进入下一屏障, 全取消也可恢复空批次; 最终责任清零.
+ * 入口: PAUSE_BUILD_TESTS=ON 时注册同名 CTest.
+ *   ctest --test-dir <build> -C <config> -R "^pause_batch_extreme_test$" --output-on-failure
+ *   pause_batch_extreme_test --suite all --iterations 10
+ * 参数: suite 为 all/matrix/parallel/reentrant; iterations 为 1..1000000,
+ * 默认 all 和每项 10 次. 增大重复次数不会增大递归深度.
+ * 边界: 调度器外壳仅计数和控制宿主时序, 实际排队/取消仍由 run_loop 执行;
+ * 不替代任意第三方调度器兼容性或全部操作系统线程交错的验证.
+ */
 #include "pause.hpp"
 
 #include <atomic>
@@ -19,8 +37,8 @@ namespace {
 }
 #define CHECK(expression) ((expression) ? (void)0 : fail(#expression, __LINE__))
 
-using pause::AdvanceMode;
-using pause::GatePhase;
+using coop_pause::AdvanceMode;
+using coop_pause::GatePhase;
 enum class Cancel { None, All, Alternating, Ends, AfterFirst };
 enum class Result { None, Value, Stopped };
 
@@ -51,7 +69,7 @@ struct Node {
     Round* round = nullptr;
     Worker* worker = nullptr;
     std::size_t index = 0;
-    std::optional<pause::PauseBranch> branch;
+    std::optional<coop_pause::PauseBranch> branch;
     stdexec::inplace_stop_source stop;
     std::atomic<Result> result[2]{Result::None, Result::None};
     std::atomic<int> schedules[2]{0, 0};
@@ -140,14 +158,14 @@ struct Receiver {
     void set_stopped() noexcept { complete(Result::Stopped); }
     template<class Error> void set_error(Error&&) noexcept { CHECK(false); }
 };
-using Sender = decltype(std::declval<pause::PauseBranch&>().suspend_point());
+using Sender = decltype(std::declval<coop_pause::PauseBranch&>().suspend_point());
 using Operation = stdexec::connect_result_t<Sender, Receiver>;
 
 void create_operation(Node& node, int stage)
 {
     CHECK(node.operation[stage] == nullptr);
     node.operation[stage] = new Operation(stdexec::connect(
-        node.branch->suspend_point(pause::PausePointInfo{node.index}), Receiver{&node, stage}));
+        node.branch->suspend_point(coop_pause::PausePointInfo{node.index}), Receiver{&node, stage}));
     node.destroy = [](void* pointer) noexcept { delete static_cast<Operation*>(pointer); };
 }
 void start_operation(Node& node, int stage) noexcept
@@ -191,8 +209,8 @@ struct Round {
     const AdvanceMode mode;
     const Cancel pattern;
     const std::size_t live;
-    pause::PauseSource source{AdvanceMode::Continuous, []() noexcept {}};
-    std::optional<pause::PauseBranch> root;
+    coop_pause::PauseSource source{AdvanceMode::Continuous, []() noexcept {}};
+    std::optional<coop_pause::PauseBranch> root;
     std::vector<Node> nodes;
     std::vector<std::unique_ptr<EntryOperation>> entries;
     std::latch started;

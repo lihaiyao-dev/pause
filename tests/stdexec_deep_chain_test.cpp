@@ -1,3 +1,21 @@
+﻿/* 测试项目：stdexec_deep_chain_test
+ * 目的: 在真实 stdexec::task/when_all/run_loop 宿主中核对深层所有权和完成传播。
+ * 测试项:
+ * 1. chain 纯链与 fork 每层附带侧支的链, 全树启动后再释放叶节点。
+ * 2. value、error、stopped、root-stop、error-fast、stopped-fast 六种完成路径。
+ * 3. error/stopped 逐层等待兄弟观察取消, 核对当前父子关系、frame 保留差异和 join 未提前完成。
+ * 4. 根停止传播到所有叶节点; fast 路径允许侧支以 value 完成, 检查异常/停止展开。
+ * 预期: 所有节点和叶 operation 恰好退役一次, 子节点先于父节点释放;
+ *       wrapper 完成时内部 frame 已释放, 无关外部兄弟此时尚未完成, 最终 live=0;
+ *       结果、取消次数、成功 join 和业务继续次数与对应路径一致。
+ * 入口: 配置 PAUSE_BUILD_DESIGN_TESTS=ON, CTest 名称 stdexec_deep_chain_test。
+ *       默认深度 0/1/8/16 x 2 种拓扑 x 6 种结果, 共 48 个场景。
+ *       单场景 CLI 按顺序指定 --depth N --topology chain|fork --outcome <上述结果>。
+ *       参数解析允许深度 0..16384, 这不是该平台可安全运行深度的承诺。
+ * 边界: 不含 pause.hpp, 测试拓扑/检查器使用 O(depth) 存储; 依赖内部仍有递归调用。
+ *       常规压力应在已验证的固定深度增加重复次数, 不默认扫描至栈溢出或扩栈掩盖边界。
+ *       本探针通过不能证明任意深度安全, 依赖深链失败也不能直接判定 Pause 状态机有误。
+ */
 #include <stdexec/execution.hpp>
 
 #include <atomic>

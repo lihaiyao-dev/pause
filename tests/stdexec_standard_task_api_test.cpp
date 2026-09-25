@@ -1,3 +1,19 @@
+﻿/* 测试项目：stdexec_standard_task_api_test
+ * 目的: 核对固定版本新 stdexec::task 的公开 API、环境和 frame 资源行为。
+ * 测试项:
+ * 1. 编译期 sender/move-only 属性、默认 token/scheduler 类型和 scheduler 接受条件。
+ * 2. move-only 返回值与引用身份; awaited error 可捕获, stopped 绕过 catch 且不继续协程。
+ * 3. typed co_yield error 经通用 sender 连接暴露为 exception_ptr, 保留 int 23 的异常载荷。
+ * 4. 默认 task 不透传任意自定义查询; 显式 TaskEnv 保存查询值 73。
+ * 5. std::stop_token 桥接为 inplace_stop_token 后仍可观察预先请求的停止。
+ * 6. value/error/stopped 三路径 frame 分配释放平衡, 未启动 task 移动后析构,
+ *    创建时分配失败抛出 bad_alloc 且协程未进入。
+ * 预期: 返回值、控制流和固定依赖差异符合断言, 已分配字节最终为 0, 无重复释放。
+ * 入口: 配置 PAUSE_BUILD_DESIGN_TESTS=ON, CTest 名称 stdexec_standard_task_api_test。
+ *       CLI --iterations N, 默认 100, 范围 1..1000000, 每轮 13 个运行期用例。
+ * 边界: 不含 pause.hpp; frame allocator 与执行 allocator 是不同资源。
+ *       ThrowingConnectScheduler 仅做类型接受性检查, 不执行依赖中会进入 unreachable 的路径。
+ */
 #include <stdexec/execution.hpp>
 
 #include <cstdio>

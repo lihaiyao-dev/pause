@@ -1,3 +1,19 @@
+﻿/* 测试项目：pause_transition_extreme_test
+ * 目的: 以真实 Pause 的显式合法调用顺序验证状态转换, 补充并发测试.
+ * 测试项:
+ * - 控制暂停/单步收集中逐个取消已等待分支, 保留尚未到达暂停点的分支责任.
+ * - Open/Collecting/Paused 中最后子分支退役, 父分支随后重新进入暂停点.
+ * - request_pause 在 fork 之前/之后提交的两种顺序.
+ * - resume 与父分支重新进入的两种顺序, 分别组合 Continuous/SingleStep.
+ * 关键预期: 共 11 项均核对 live/waiting/revision/epoch; 未重新进入的父分支
+ * 不能直接再次 fork; Collecting 不得过早收敛; Open 同步放行而恢复路径只调度
+ * 一次; 空屏障单步产生新 epoch, 旧 epoch 恢复失败且不改变 revision.
+ * 入口: PAUSE_BUILD_TESTS=ON 时注册同名 CTest.
+ *   ctest --test-dir <build> -C <config> -R "^pause_transition_extreme_test$" --output-on-failure
+ *   pause_transition_extreme_test --iterations 10
+ * 参数: iterations 为 1..1000000, 默认每项 10 次, 每次使用完整独立作用域.
+ * 边界: 覆盖选定的状态锁提交顺序, 不是随机竞态或状态模型事件数; 不增加递归深度.
+ */
 #include "pause_sender_test_support.hpp"
 
 #include <array>
@@ -7,10 +23,10 @@
 // races. Every row is a complete real Pause scope, not a model event count.
 namespace {
 using namespace pause_sender_test;
-using pause::AdvanceMode;
-using pause::GatePhase;
-using pause::PauseBranch;
-using pause::PauseSource;
+using coop_pause::AdvanceMode;
+using coop_pause::GatePhase;
+using coop_pause::PauseBranch;
+using coop_pause::PauseSource;
 using Sender = decltype(std::declval<PauseBranch&>().suspend_point());
 using Operation = stdexec::connect_result_t<Sender, Receiver>;
 
@@ -35,8 +51,8 @@ void partial_collecting_cancel(bool single_step)
         auto snapshot = source.snapshot();
         CHECK(snapshot.phase == GatePhase::Collecting && !snapshot.paused_epoch);
         CHECK(snapshot.live_branch_count == 3 && snapshot.waiting_branch_count == 2);
-        CHECK(snapshot.origin == (single_step ? pause::PauseOrigin::SingleStep
-                                             : pause::PauseOrigin::ControlRequest));
+        CHECK(snapshot.origin == (single_step ? coop_pause::PauseOrigin::SingleStep
+                                             : coop_pause::PauseOrigin::ControlRequest));
         const auto initial_revision = snapshot.revision;
         CHECK(!first_stop.request_stop());
         CHECK(first.result == Completion::Stopped && second.result == Completion::None);
@@ -106,7 +122,7 @@ void last_child_and_parent_reentry(GatePhase gate)
         // The direct-child count is zero, but retirement must not grant the
         // delegated parent permission to fork before its next pause point.
         auto rejected = root->fork_and_block_self<1>();
-        CHECK(!rejected && rejected.error() == pause::PauseError::InvalidBranchState);
+        CHECK(!rejected && rejected.error() == coop_pause::PauseError::InvalidBranchState);
         CHECK(source.snapshot().revision == retired.revision);
         parent_operation.reset(new Operation(stdexec::connect(
             root->suspend_point(), Receiver{&parent})));
@@ -154,7 +170,7 @@ void fork_pause_order(bool pause_first)
     if (!pause_first) CHECK(source.request_pause());
     auto snapshot = source.snapshot();
     CHECK(snapshot.phase == GatePhase::Collecting && snapshot.revision == 3);
-    CHECK(snapshot.origin == pause::PauseOrigin::ControlRequest && !snapshot.step_round);
+    CHECK(snapshot.origin == coop_pause::PauseOrigin::ControlRequest && !snapshot.step_round);
     CHECK(snapshot.live_branch_count == 3 && snapshot.waiting_branch_count == 0);
     for (std::size_t index = 0; index != children.size(); ++index) {
         children[index].reset();
@@ -202,9 +218,9 @@ void reentry_resume_order(bool resume_first, AdvanceMode mode)
                 CHECK(parent.result == Completion::None);
                 if (resume_first) {
                     CHECK(entered.paused_epoch != old.paused_epoch);
-                    CHECK(entered.origin == pause::PauseOrigin::SingleStep && entered.step_round == 1);
+                    CHECK(entered.origin == coop_pause::PauseOrigin::SingleStep && entered.step_round == 1);
                     auto stale = source.resume(*old.paused_epoch, mode);
-                    CHECK(!stale && stale.error() == pause::PauseError::StalePauseEpoch);
+                    CHECK(!stale && stale.error() == coop_pause::PauseError::StalePauseEpoch);
                     CHECK(source.snapshot().revision == entered.revision);
                 } else CHECK(entered.paused_epoch == old.paused_epoch);
                 CHECK(source.resume(*entered.paused_epoch,

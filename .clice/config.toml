@@ -1,0 +1,17 @@
+# https://docs.clice.io/clice/guide/configuration
+# These configurations describe test translation units for this header-only library.
+default_configuration = "debug"
+
+[project]
+# clice g900128f crashes while serializing this project's PCH. This documented
+# mode serves queries from the index and compiles completion without a PCH.
+# It does not restrict source editing. Recheck after upgrading clice.
+readonly = "on"
+
+[[rules]]
+configuration = "debug"
+compile_commands = ["../build/msvc-debug"]
+
+[[rules]]
+configuration = "release"
+compile_commands = ["../build/msvc-release"]
