@@ -1,0 +1,10 @@
+cmake_minimum_required(VERSION 3.25)
+project(pause_package_consumer LANGUAGES CXX)
+set(PAUSE_TEST_VERSION 0.1 CACHE STRING "Requested Pause version for package tests")
+find_package(pause ${PAUSE_TEST_VERSION} CONFIG REQUIRED)
+# Repeated discovery must not redefine imported probe targets.
+find_package(pause 0.1 CONFIG REQUIRED)
+add_executable(consumer main.cpp)
+target_link_libraries(consumer PRIVATE pause::pause)
+enable_testing()
+add_test(NAME consumer COMMAND consumer)

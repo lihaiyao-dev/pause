@@ -1,22 +1,10 @@
 cmake_minimum_required(VERSION 3.25)
 
-project(pause LANGUAGES CXX)
+project(pause VERSION 0.1.0 LANGUAGES CXX)
 
-include(FetchContent)
-
-set(STDEXEC_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
-set(STDEXEC_BUILD_TESTS OFF CACHE BOOL "" FORCE)
-
-set(PAUSE_STDEXEC_GIT_TAG "f0e8ae6fdc6c188389b146bb854b80d399724b04"
-    CACHE STRING "stdexec revision (must satisfy Pause's configure-time compatibility check)")
-
-FetchContent_Declare(
-    stdexec
-    GIT_REPOSITORY https://github.com/NVIDIA/stdexec.git
-    GIT_TAG "${PAUSE_STDEXEC_GIT_TAG}"
-    GIT_PROGRESS TRUE
-)
-FetchContent_MakeAvailable(stdexec)
+include(GNUInstallDirs)
+include(cmake/PauseDependency.cmake)
+pause_resolve_stdexec()
 
 include(cmake/CheckPauseStdexec.cmake)
 pause_check_stdexec()
@@ -29,11 +17,14 @@ target_include_directories(
     pause
     INTERFACE
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
+        $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
 )
-target_link_libraries(pause INTERFACE STDEXEC::stdexec)
+# The installed config links the independently resolved dependency. Exporting
+# the fetched build target would incorrectly require exporting stdexec with us.
+target_link_libraries(pause INTERFACE $<BUILD_INTERFACE:STDEXEC::stdexec>)
 if(MSVC)
     # Resource rollback in the public header requires C++ stack unwinding.
-    target_compile_options(pause INTERFACE /EHsc)
+    target_compile_options(pause INTERFACE $<BUILD_INTERFACE:/EHsc>)
 endif()
 
 option(PAUSE_BUILD_TOOLCHAIN_SMOKE_TEST
@@ -50,9 +41,15 @@ endif()
 
 option(PAUSE_BUILD_TESTS "Build the real Pause implementation acceptance tests" ON)
 option(PAUSE_BUILD_EXAMPLES "Build runnable Pause application examples" OFF)
+option(PAUSE_BUILD_QT_EXAMPLE "Build the interactive Qt workflow example (requires Qt 6 Widgets)" OFF)
 
 if(PAUSE_BUILD_TESTS)
     enable_testing()
+    add_test(NAME pause_package_manager
+        COMMAND ${CMAKE_COMMAND}
+            "-DOUTPUT_DIRECTORY=${CMAKE_CURRENT_BINARY_DIR}/package-manager-tests"
+            -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/package_manager_test.cmake")
+    set_tests_properties(pause_package_manager PROPERTIES TIMEOUT 60)
     include(tests/instrument_pause_stdexec.cmake)
     foreach(test_name IN ITEMS pause_integration_test pause_sender_test
                                pause_sender_hook_test pause_sender_death_test pause_resource_test
@@ -97,7 +94,7 @@ if(PAUSE_BUILD_TESTS)
             "-DCXX_FLAGS=${CMAKE_CXX_FLAGS} ${pause_environment_config_flags}"
             "-DMSVC_RUNTIME_LIBRARY=${pause_environment_runtime}"
             "-DSOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}"
-            "-DSTDEXEC_INCLUDE_DIR=${stdexec_SOURCE_DIR}/include"
+            "-DSTDEXEC_INCLUDE_DIR=${pause_stdexec_include_dir}"
             "-DOUTPUT_DIRECTORY=${CMAKE_CURRENT_BINARY_DIR}/pause-environment-check/$<CONFIG>"
             -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/check_pause_environment.cmake")
     set_tests_properties(pause_environment_compile PROPERTIES TIMEOUT 120)
@@ -140,6 +137,33 @@ if(PAUSE_BUILD_EXAMPLES)
     endif()
 endif()
 
+if(PAUSE_BUILD_QT_EXAMPLE)
+    find_package(Qt6 6.5 REQUIRED COMPONENTS Widgets)
+    add_executable(pause_qt_workflow examples/qt_workflow.cpp)
+    target_link_libraries(pause_qt_workflow PRIVATE pause::pause Qt6::Widgets)
+    # Keep Qt's signals/slots/emit macros out of stdexec headers.
+    target_compile_definitions(pause_qt_workflow PRIVATE QT_NO_KEYWORDS)
+    if(MSVC)
+        target_compile_options(pause_qt_workflow PRIVATE /utf-8)
+    endif()
+    if(PAUSE_BUILD_TESTS)
+        foreach(scenario IN ITEMS controls single-step close-paused close-running
+                                  cancel-all cancel-running restart-active restart-paused
+                                  sender-values sender-error sender-stopped sender-async custom-workflow prestop empty-group)
+            add_test(NAME pause_example_qt_${scenario}
+                COMMAND pause_qt_workflow --smoke-test ${scenario})
+            set_tests_properties(pause_example_qt_${scenario} PROPERTIES
+                TIMEOUT 60 ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+            if(TARGET Qt6::QOffscreenIntegrationPlugin)
+                # windeployqt normally copies only the desktop platform plugin.
+                # Tests can use the offscreen plugin from the selected Qt kit.
+                set_property(TEST pause_example_qt_${scenario} APPEND PROPERTY ENVIRONMENT
+                    "QT_QPA_PLATFORM_PLUGIN_PATH=$<TARGET_FILE_DIR:Qt6::QOffscreenIntegrationPlugin>")
+            endif()
+        endforeach()
+    endif()
+endif()
+
 option(PAUSE_BUILD_DESIGN_TESTS
        "Build design-model and pinned-stdexec contract tests (not a Pause implementation test)"
        OFF)
@@ -170,5 +194,10 @@ if(PAUSE_BUILD_DESIGN_TESTS)
 
     target_include_directories(stdexec_stop_callback_hook_test PRIVATE
         "${CMAKE_CURRENT_BINARY_DIR}/pause-test-hooks"
-        "${stdexec_SOURCE_DIR}/include/stdexec")
+        "${pause_stdexec_include_dir}/stdexec")
+endif()
+
+option(PAUSE_INSTALL "Generate Pause installation and package rules" ${PROJECT_IS_TOP_LEVEL})
+if(PAUSE_INSTALL)
+    include(cmake/PausePackaging.cmake)
 endif()

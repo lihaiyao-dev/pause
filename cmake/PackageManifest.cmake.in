@@ -1,0 +1,8 @@
+set(pause_stage "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}")
+set(pause_manifest "pause-package-v1|@PROJECT_VERSION@\n")
+set(pause_package_files "@pause_package_files@")
+foreach(relative IN LISTS pause_package_files)
+    file(SHA256 "${pause_stage}/${relative}" digest)
+    string(APPEND pause_manifest "${digest}|${relative}\n")
+endforeach()
+file(WRITE "${pause_stage}/pause-manifest.txt" "${pause_manifest}")

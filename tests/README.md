@@ -1,5 +1,39 @@
 # Pause 实现、设计与依赖契约测试
 
+本文同时索引当前维护入口和带日期的历史验证。当前设计要求见 [设计契约](../pause-branch-design.md)，条款对应场景见 [逐场景矩阵](pause-contract-scenario-matrix.md)。历史数字只适用于记录所列的输入与环境，不能当作当前工作区重新执行的结果；示例及命名空间迁移记录见 [历史验证记录](example-validation-history.md)。
+
+## CMake 开发包回归
+
+`pause_package_manager` 已加入 `PAUSE_BUILD_TESTS`，覆盖安装、更新、清理旧文件、
+卸载幂等性、文件所有权、损坏/修改文件拒绝、越界路径及中断事务拒绝。也可独立运行：
+
+```powershell
+cmake -DOUTPUT_DIRECTORY=D:/workspace/pause/build/package-manager-tests -P tests/package_manager_test.cmake
+```
+
+真实包集成测试需要先按[打包说明](../docs/packaging.md)配置 Pause 打包目录并独立安装
+stdexec，然后在有编译器的终端执行（`OUTPUT_DIRECTORY` 需使用尚不存在的目录）：
+
+```powershell
+cmake -DPAUSE_BINARY_DIR=D:/workspace/pause/build/package -DSTDEXEC_PREFIX=D:/sdk/stdexec -DOUTPUT_DIRECTORY=D:/workspace/pause/build/package-integration -DNINJA_DIRECTORY=D:/Ninja -P tests/package_integration_test.cmake
+```
+
+该测试生成 ZIP/TGZ，验证真实包安装、带空格路径、安装目录搬移、重复 `find_package`、
+消费者编译/运行、已有不兼容依赖拒绝、禁用下载时缺依赖拒绝、更新/卸载及卸载后查找
+失败。故意不兼容的依赖使用缺少接口的测试夹具，不代表已遍历所有 stdexec 历史版本。
+集成日志写入 `OUTPUT_DIRECTORY/integration.log`；依赖的默认安装布局为 `lib/cmake/stdexec`。
+文档交付检查还覆盖指南/示例的安装哈希、更新保留、卸载清理，并在搬移后的安装前缀
+独立配置、构建和运行指南随附的简单工作流，确保无需源码仓库即可使用。
+
+2026-09-28 本轮验证：Windows/MSVC 19.44、CMake 3.30，独立安装固定提交 stdexec 后，
+Release 实现/设计/工具链及安装管理回归 **29/29** 通过。最终 ZIP/TGZ 集成测试通过，
+另验证版本 `0.2` 请求被 `0.1.0` 包拒绝，以及导出目标不含生产机器路径或无条件
+`/EHsc`；最终安装管理测试单独重跑通过。FetchContent 分支使用实际 stdexec 源码缓存，
+消费者配置、编译、运行通过。未验证无缓存首次联网下载、Linux/macOS、Debug、
+ASan/TSan，以及断电/强杀后的人工恢复流程。日志位于
+`build/package-integration-verified/integration.log` 与
+`build/package-installed-tests/Testing/Temporary/LastTest.log`（后者会随重跑覆盖）。
+
 当前测试直接覆盖 `pause.hpp`，并保留设计模型及固定 stdexec 的独立探针。
 
 ## 测试目录与注释（2026-09-25 整理）
@@ -330,7 +364,7 @@ foreach ($testName in $testNames) {
 ## 组件取消对照（2026-09-23）
 
 在相同固定依赖与 MSVC 工具链下，新增独立的
-[临时探针](../build/standards-review-20260923/scheduler_stop_probe.cpp)，
+[历史探针（已归档）](archive/standards-review-20260923/scheduler_stop_probe.cpp)，
 使用公开组件 API，100 轮确定性对照全部通过，进程设 30 秒总超时。
 前三条路径使用同一个 source 的同一个 `inplace_stop_token`，均先 start 入队、
 确认未完成，然后 request_stop，最后执行 run_loop 队列。
@@ -343,15 +377,17 @@ foreach ($testName in $testNames) {
 | `inline_scheduler`，start 前 token 已停止 | value，属于不检查取消 |
 | `stdexec::task` 的 current scheduler 显式调度，入队后 stop | 根操作 stopped，后续语句未执行 |
 
-编译/运行命令（仓库根目录；构建脚本使用本机 Visual Studio 路径）：
+原脚本已从 `build/standards-review-20260923` 迁至 `tests/archive`。需重现时从仓库根执行下面的归档入口；脚本使用历史本机 Visual Studio 路径，先核对安装路径及固定依赖缓存：
 
 ```powershell
-.\build\standards-review-20260923\build-scheduler-stop-probe.cmd
-.\build\standards-review-20260923\run-scheduler-stop-probe.cmd
+New-Item -ItemType Directory -Force build/standards-review-20260923 | Out-Null
+.\tests\archive\standards-review-20260923\build-scheduler-stop-probe.cmd
+.\tests\archive\standards-review-20260923\run-scheduler-stop-probe.cmd
 ```
 
-[原始输出](../build/standards-review-20260923/scheduler_stop_probe.out)
-与 stderr 已保留。这是组件行为验证，没有切换主设计使用的 task、没有实现 Pause，
+历史 stdout/stderr 的记录路径为 `build/standards-review-20260923/scheduler_stop_probe.out`
+和同目录的 `scheduler_stop_probe.err`，它们不随仓库分发。缺失时须从原批次证据副本核对；
+重新运行脚本产生的是新的验证记录，不能补写为当时的结果。这是组件行为验证，没有切换主设计使用的 task、没有实现 Pause，
 也没有复跑 1000 万次模型事件；这里描述的是该探针执行时的状态，后续设计已采用
 本文开头的新方案。本探针未启用 ASan；前一日的 ASan 结果仍仅适用于
 当日列出的测试。模型将调度结果作为外部事件，不能替代真实恢复取消的集成验收。
@@ -371,7 +407,7 @@ foreach ($testName in $testNames) {
 公开 `.affine()` 定制现已选为全通道宿主适配的设计方向；其依据仍是独立探针，
 真实 Pause 的内部终止策略、
 责任撤销和完整 fork 生命周期仍需在实现后验收。
-# 真实 Pause 实现验收（2026-09-23）
+## 真实 Pause 实现验收（2026-09-23）
 
 本轮结果、MSVC Debug STL 内部终止的资源保证边界，以及 Linux TSan 的检测边界，
 见[实现与验收报告](pause-implementation-validation-2026-09-23.md)。
@@ -445,7 +481,8 @@ stderr、退出码和 SHA256。主模型是 1000 万个事件，不是 1000 万�
 
 本机 WSL 的 TSan 复现命令如下；脚本使用单进程 `setarch -R`。
 2026-09-24 命名空间改为 `coop_pause` 后，已移除旧 POSIX 声明 shim，直接编译
-生产头文件。此前验收报告记录的是改名前的运行，不能视作新脚本的执行结果。
+生产头文件。2026-09-23 的报告记录的是改名前运行；改名后的压力与目录整理入口检查分别见
+[2026-09-25 契约验收](pause-contract-validation-2026-09-25.md)和[目录整理验证](test-layout-validation-2026-09-25.md)。
 头文件双翻译单元测试还检查全局 `pause()` 与库命名空间在两种声明顺序下共存。
 
 ```sh
@@ -458,22 +495,6 @@ bash tests/scripts/run-pause-tsan.sh --iterations 1000
 
 ## clice 智能提示
 
-`.clice/config.toml` 按[官方配置文档](https://docs.clice.io/clice/guide/configuration)
-声明 `debug`、`release` 两个配置，分别读取
-`build/msvc-debug/compile_commands.json` 和
-`build/msvc-release/compile_commands.json`，默认使用 `debug`。
-上述测试命令会生成两份编译数据库；只需生成时可运行
-`.\scripts\msvc-cmake.cmd configure all`。
+当前配置以 [.clice/config.toml](../.clice/config.toml) 为准，生成编译数据库、切换配置与头文件解析的说明统一维护在 [本地开发说明](../docs/development.md#2-examples-的-clice-代码提示)。该说明覆盖 Qt 示例与测试的数据库优先级。
 
-clice 从编译数据库取得 C++ 标准、宏和依赖路径，并自动查询 MSVC 工具链。
-无需复制 `.clangd` 的配置，也无需手工维护系统头文件路径。
-本机 clice `g900128f` 在生成该项目的 PCH 时发生内置 Clang 断言崩溃，
-因此配置采用官方支持的 `[project] readonly = "on"`：查询主要由索引提供，
-补全／签名提示按需编译且不使用 PCH。它不限制编辑源码或构建；代价是没有
-PCH 复用，本次真实补全请求约 2.6–2.7 秒。后台索引保留默认开启。
-Debug、Release 的真实成员补全均已验证；升级 clice 后可重新验证 PCH，
-确认修复后移除此兼容设置，恢复默认的完整 AST 服务方式。
-
-配置文件仅在启动时读取：已打开 VS Code 时执行
-`Clice: Restart Language Server`；使用 `Clice: Switch Build Configuration`
-可切换 Debug/Release 智能提示上下文。这个选择不改变库或测试构建配置。
+历史 clice `g900128f` 曾使用 `readonly = "on"` 绕过 PCH 崩溃；当时的 Debug/Release 补全结果只适用于那次环境。当前配置已移除该兼容设置，不应照搬旧值。历史夹具与验证脚本见 [归档索引](archive/README.md)。

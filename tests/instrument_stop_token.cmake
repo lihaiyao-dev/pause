@@ -3,7 +3,7 @@
 # 仅生成构建目录中的测试头，供可控竞态测试使用；不修改上游源码或提供运行时验收。
 # Instrument a build-only copy. Never change the pinned dependency checkout.
 include_guard(GLOBAL)
-set(pause_stop_header "${stdexec_SOURCE_DIR}/include/stdexec/stop_token.hpp")
+set(pause_stop_header "${pause_stdexec_include_dir}/stdexec/stop_token.hpp")
 set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${pause_stop_header}")
 file(SHA256 "${pause_stop_header}" pause_stop_hash)
 if(NOT pause_stop_hash STREQUAL "243fb98e894c35cac231de20436f82c6a8de009c7178831fbc2c9c9536658bf3")

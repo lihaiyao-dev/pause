@@ -55,3 +55,15 @@ __pycache__/
 .DS_Store
 Thumbs.db
 Desktop.ini
+
+# Local credentials; commit only placeholder environment examples.
+.env
+.env.*
+!.env.example
+!.env.template
+.git-credentials
+.netrc
+*.p12
+*.pfx
+id_rsa
+id_ed25519

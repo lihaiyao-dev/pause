@@ -2,11 +2,31 @@
 
 ## 1. 文档状态与职责
 
-本文定义公共 API、暂停责任、并发完成协议、执行器恢复和关键伪代码。`pause.hpp` 已按本基线实现；实际运行结果、覆盖边界及 MSVC Debug 标准库内部终止边界见[实现与验收记录](tests/pause-implementation-validation-2026-09-23.md)。本文的设计推理不替代运行证据。
+本文定义公共 API、暂停责任、并发完成协议、执行器恢复和关键伪代码。`pause.hpp` 已实现这些协议；本文是设计契约，实际运行证据按下表中的日期、输入版本和覆盖范围解释。
+
+文档同步日期：**2026-10-07**；对应项目版本 **0.1.0**、C++23 和 NVIDIA stdexec 默认提交 `f0e8ae6fdc6c188389b146bb854b80d399724b04`。当前实现基线仍为默认 `stdexec::task`、allocator 与已接入的 `run_loop`；兼容源码覆盖及必要接口检查见 [README 构建说明](README.md#1-支持环境与构建)。本次同步不扩大平台、scheduler 或依赖版本的保证范围。
+
+| 验证范围 | 记录与状态 | 解释边界 |
+| --- | --- | --- |
+| 公共 API、状态机、取消、恢复及生命周期 | [2026-09-25 逐场景矩阵](tests/pause-contract-scenario-matrix.md)与[验收报告](tests/pause-contract-validation-2026-09-25.md)记录了对应有限场景的完成情况 | 压力结果绑定当时的源码、依赖和测试输入；模型事件、真实运行、预期终止分别统计 |
+| 测试目录整理后的回归 | [2026-09-25 目录整理验证](tests/test-layout-validation-2026-09-25.md)记录 Debug/Release 回归及小量 sanitizer 入口检查 | 注释整理改变哈希，未重新执行全部历史大规模压力 |
+| 安装包、依赖解析与离线示例 | [开发包回归记录](tests/README.md#cmake-开发包回归)记录 2026-09-28 的验证范围 | 不代替 Pause 并发协议或其他平台的验收 |
+| 初版实现及资源失败边界 | [2026-09-23 实现记录](tests/pause-implementation-validation-2026-09-23.md) | 保留当时环境、结果及 MSVC Debug STL 内部终止限制 |
+
+2026-10-07 的文档同步不构成新的运行期验收。升级依赖、改动生产代码或更换宿主后，仍须针对实际输入重新验证；第 14 节定义持续有效的验收要求。
+
+| 读者关注点 | 阅读入口 |
+| --- | --- |
+| 应用如何接入、处理错误并关闭 | [使用指南](docs/user-guide.md)、本文第 3、9–12 节 |
+| Pause 与宿主各自拥有什么 | 第 2 节职责边界、第 4 节状态图、第 8 节责任转移图 |
+| 恢复与取消如何竞争、在哪个资源交付 | 第 6 节时序图与调度规则、第 7 节完成权协议 |
+| 为什么选择这些协议、如何证明实现满足要求 | 第 6.5、7.6.5、11.3 节的取舍与边界、第 14 节及逐场景矩阵 |
+
+本契约以接口、前置条件、不变量、并发协议、设计取舍和验证映射组织。C++ 工作草案接口与 stdexec 扩展的适用边界见第 3.5 节；这里没有声称已通过 ISO/IEC/IEEE 文档标准认证或原生 `std::execution` 后端验证。
 
 2026-09-24：公共 C++ 命名空间由 `pause` 改为 `coop_pause`，避免与 POSIX 全局函数 `::pause()` 冲突；不提供旧名称别名。调用方需同步改名并重新编译，文件名与 CMake 目标不变；暂停状态机及运行语义不变。
 
-2026-09-23 已采用 `stdexec::task`、公开 `.affine()` 宿主适配及经验证的 scheduler 接入方案。首版具体后端为固定依赖的 `stdexec::run_loop::scheduler` 与默认 allocator；第 3.4、6.5 节规定接入条件和适配边界。组件可行性测试不等于生产 Pause 已实现。
+2026-09-23 已采用 `stdexec::task`、公开 `.affine()` 宿主适配及经验证的 scheduler 接入方案。具体后端为固定依赖的 `stdexec::run_loop::scheduler` 与默认 allocator；第 3.4、6.5 节规定接入条件和适配边界。早期组件可行性探针与后续真实 Pause 验收分别记录，不能相互替代。
 
 Pause 是 `stdexec + coroutine` 工作流中的协作式暂停屏障：
 
@@ -116,7 +136,7 @@ snapshot 在同一次状态锁临界区复制，是固定大小的拥有型值�
 - `waiting_branch_count` 从共享 Waiting 链表计算，不单独保存。已被 Resume 摘走、仍等待 scheduler 的 operation 不计入该值。
 - `revision` 是状态提交序号；`paused_epoch` 是本次暂停屏障的恢复凭证，取建立 Paused 的那次 revision。
 - 后续同轮 waiter 加入或撤销可以改变 revision，而不改变该轮 epoch。
-- 本版不将 64 位 revision/epoch 的计数回绕纳入保证范围，不增加溢出检查或回绕处理。
+- revision/epoch 使用 `std::size_t`，在当前 x64 基线上为 64 位；本版不将计数回绕纳入保证范围，不增加溢出检查或回绕处理。
 - snapshot 不表示 scope 是否 stopped、是否完成或是否可以析构。
 
 ### 3.2 PauseSource
@@ -247,7 +267,7 @@ move construction 转移所有权并清空源对象，不改变 record 地址。
 - 固定 `task_scheduler` 的某些后端 connect/分配异常会进入 `std::unreachable()`，不是可靠的终止策略。选定 run_loop 的 schedule/connect 为 noexcept，两种环境的 operation 布局一致并使用内嵌存储，已核对无该异常入口；不能将此结论推广到任意合法 scheduler，也不能依靠外层 catch 修复库内未定义行为。
 - 增加后端前，必须完成上述源码检查、资源失败与取消测试；有可达异常入口时先修复适配或后端，不通过补文档承诺来接入。
 
-第 6.5 节的 `.affine()` 是选定 task 的必要宿主适配：保留正常路径 0/1 次调度，为 stopped 提供单独的宿主跳转。它不改变 Pause 的取消通道或业务错误策略。当前探针已验证这一方向，真实 Pause 的调度、frame 释放和嵌套 fork 仍须完整验收。
+第 6.5 节的 `.affine()` 是选定 task 的必要宿主适配：保留正常路径 0/1 次调度，为 stopped 提供单独的宿主跳转。它不改变 Pause 的取消通道或业务错误策略。真实 Pause 的调度、frame 释放及嵌套 fork 已纳入运行期测试，其已执行范围见第 1 节的逐场景矩阵与验收报告；新版本仍须满足第 14 节。
 
 内部 `raw_suspend_sender` 用两种空标签区分正常完成的来源：
 
@@ -274,6 +294,20 @@ using RawCompletionSignatures = stdexec::completion_signatures<
 这些调整减少对 stdexec 兼容接口的依赖，不表示已经迁入原生 `std::execution` 后端。将来切换标准库时，仍需核对名称归属、调度取消、资源失败与 task frame 释放顺序，并复验当前行为；没有等价标准部件的部分继续保留。
 
 ## 4. 责任与暂停门
+
+下面显示暂停门的转换。`Collecting → Paused` 在提交事务的同一状态锁内完成，零责任时不会向观察者暴露中间的 Collecting；初始 SingleStep 的 root 登记也在同一事务中建立收集。
+
+```mermaid
+stateDiagram-v2
+    [*] --> Open
+    Open --> Collecting: request_pause / 初始 SingleStep 登记 root
+    Collecting --> Paused: pending_arrivals 为 0，发布 epoch
+    Paused --> Open: resume(epoch, Continuous)
+    Paused --> Collecting: resume(epoch, SingleStep)，先建下一轮再放行
+    Paused --> Paused: waiter 取消或 parent 重入，epoch 不变
+```
+
+`Open` 是 Source 构造后的门状态，控制仍要求已创建 root。责任到达或退出可推动 Collecting 收敛，取消本身不会打开门。空 Paused 的 SingleStep 会在一次提交中形成新 epoch；它不表示工作流完成。具体状态字段和约束如下。
 
 ### 4.1 唯一共享状态
 
@@ -641,6 +675,43 @@ raw value 的完成权一旦被取得，就不会被 callback 改成 raw stopped
 不得将 Pause 本体恢复 scheduler 的 receiver token 改为不可取消来“保证 value”。stopped 由记账 receiver 撤销责任后正常传播；宿主跳转按第 6.5 节交付该既定结果，不适用内部 error 的进程终止策略。
 
 上述恢复取消是本项目对集成实现的要求，不是任意 `scheduler` 自动提供的保证。首版采用第 3.4 节的 run_loop 接入；普通 `inline_scheduler` 的不检查取消行为不能充当本体的合格恢复调度。第 6.5 节宿主跳转可以不可取消，但原恢复路径仍满足本节要求。与恢复完成裁决并发的 stop 按实际裁决顺序处理，不追溯改写已取得公开 value 完成权的结果；Open 的 InlinePass 继续保持零调度及不追加 stop 检查。
+
+下图只展开**已登记 Waiting、由默认 task 直接等待**的竞争路径。Pause 列表示内核与外层记账/适配协议，不代表独立线程；箭头展示因果关系，线程归属由 callback、控制调用和 scheduler 决定。
+
+```mermaid
+sequenceDiagram
+    participant C as 控制方
+    participant X as stop source
+    participant P as Pause 协议
+    participant S as 原 scheduler
+    participant T as 等待中的 task
+    Note over P,T: waiter 已登记；取消与恢复在 Source mutex 内裁决
+    par 请求恢复
+        C->>P: resume(epoch, mode)
+    and 请求取消
+        X->>P: env token callback
+    end
+    alt Resume 先取得该 waiter 的完成权
+        P->>P: 锁内摘链；SingleStep 先建立下一轮
+        P->>P: 解锁、通知，注销整个恢复批次的 callback
+        P->>S: schedule，保留原 receiver token
+        alt 恢复调度接受取消
+            S-->>P: stopped
+            P->>P: 撤销责任并通知
+            P->>S: 不可取消的宿主 affinity 跳转
+            S-->>T: stopped，退出 task
+        else 恢复调度成功
+            S-->>T: value，继续业务
+        end
+    else callback 先取得该 waiter 的完成权
+        P->>P: 锁内摘链、撤责；解锁后通知
+        P->>S: 不可取消的宿主 affinity 跳转
+        S-->>T: stopped，退出 task
+    end
+    Note over P,T: 撤责不等于 frame 释放；内部 error 直接 terminate
+```
+
+callback 获胜时，该 waiter 不再属于恢复批次；resume 的命令结果仍取决于锁内的门状态与 epoch，不能由单个 waiter 的胜负推断。普通 connect/start 不启用图中的宿主 affinity 跳转；Open 直接通过路径也不在此图中，其正常调度次数为零。
 
 ### 6.5 与 stdexec::task 的全通道 affinity 协作
 
@@ -1041,9 +1112,22 @@ start/Resume 持有完成权并显式注销时，正确顺序始终是“锁内�
 
 异步转交清理线程可以避开控制线程上的注销等待，但需要新的调度资源、对象保活和关闭协议，会改变本版的生命周期边界，因此本版不采用。若将来要求 resume 严格无等待，需要单独重新设计，不能只把 reset 移到后台。
 
-上述结论是对固定库源码和伪代码交错的审查结论，成立条件包括唯一清理方、锁外注销、terminal 尾调用及第 12 节的生命周期契约；不是已经通过运行测试的保证。对应确定性交错验收见第 14.2 节。
+上述方案的成立条件包括唯一清理方、锁外注销、terminal 尾调用及第 12 节的生命周期契约。固定库源码审查与确定性交错测试提供不同证据：运行结果见第 1 节的逐场景矩阵和验收报告，持续验收要求见第 14.2 节；已测交错不能证明所有线程交错。
 
 ## 8. 非消耗 fork 与 record 退役
+
+下图以两条正常结束的子路径说明暂停责任的转移；数字只统计这棵子树，不包含同 Source 的独立分支。parent 对象及 record 在整个过程持续存活。
+
+```mermaid
+flowchart TD
+    A["parent 参与：live = 1"] -->|"fork 2：一次锁内事务"| B["parent 委托责任；A、B 各参与：live = 2"]
+    B -->|"A 的 branch 析构退役"| C["只剩 B 参与：live = 1；parent 仍不参与"]
+    C -->|"B 的 branch 析构退役"| D["直接 children 全部退役：live = 0；parent 待重入"]
+    D -->|"parent 等待下一暂停点，原子重入"| E["parent 参与：live = 1；按当前 Gate 通过或等待"]
+    D -->|"parent 直接退出"| F["parent record 退役，不新增责任"]
+```
+
+取消可能先撤销 child 的有效责任，稍后才析构其 record，因此 live 归零不能替代图中“children 全部退役”的条件。`fork_and_block_self` 转交责任，任务的启动和 join 仍由宿主完成；parent 重入前只能做结构化收尾。
 
 ### 8.1 原子转交责任
 
@@ -1247,7 +1331,7 @@ co_await stdexec::when_all(
 
 本示例不定义通用结果封装：推广到其他类型时，应使用可放入 `optional` 的拥有型非 void 值；`void` 需要单独的业务结果表示，指针或视图也不会延长所指对象的生命周期。
 
-该包装已用选定 `stdexec::task` 和所有权哨兵验证单层 stopped/value/error，以及 3/5 层链状、3 层二叉分支的四类退出路径。23 类生命周期实验各重复 5000 次，Debug/ASan 均通过；二叉正常路径核对完整展开，提前 error/stopped 路径核对实际构造的子树。包装后的 A 所有权在外部 B 完成前退役。这验证了依赖和 frame 释放顺序；真实 Pause 集成仍按第 14 节验收。
+历史组件实验用选定 `stdexec::task` 和所有权哨兵验证单层 stopped/value/error，以及 3/5 层链状、3 层二叉分支的四类退出路径。23 类生命周期实验各重复 5000 次，Debug/ASan 均通过；二叉正常路径核对完整展开，提前 error/stopped 路径核对实际构造的子树。包装后的 A 所有权在外部 B 完成前退役。这些实验验证依赖和 frame 释放顺序；后续真实 Pause 集成覆盖见第 1 节的逐场景矩阵，二者不合并统计。
 
 ## 10. 使用骨架
 
@@ -1487,7 +1571,7 @@ Source 析构不请求 stop、不完成 waiter、不等待工作流。debug 检�
 
 ## 14. 验收要求
 
-以下是实现的验收要求，实际已执行项目及结论边界见本文开头的验收记录。并发用 barrier/latch 确定交错，不依赖 sleep 碰概率。
+以下是实现持续有效的验收要求，不是一份尚未实施的任务清单。已执行项目、对应版本和结论边界见第 1 节的验证索引及逐场景矩阵；改动后按受影响条款重新验收。并发用 barrier/latch 确定交错，不依赖 sleep 碰概率。
 
 ### 14.1 API 与暂停收敛
 

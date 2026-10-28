@@ -3,13 +3,22 @@
 # 2026-07-05 (5e22875aad04fd933a9f0405e09fe85c77bf07db).
 # Check the selected source, including FetchContent source overrides/archives.
 function(pause_check_stdexec)
+    if(ARGC EQUAL 2)
+        set(probe_source "${ARGV0}")
+        set(pause_include_dir "${ARGV1}")
+    else()
+        set(probe_source "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/../tests/check_stdexec.cpp")
+        set(pause_include_dir "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/..")
+    endif()
     # stdexec finds Threads in its own directory; make the imported dependency
     # visible here too so try_compile can export it with the probe target.
     find_package(Threads REQUIRED)
     # try_compile can import imported targets, but not a normal build target
     # such as STDEXEC::stdexec. Preserve its actual usage requirements instead
     # of maintaining a second compiler-specific flag list.
-    add_library(pause_stdexec_requirements INTERFACE IMPORTED)
+    if(NOT TARGET pause_stdexec_requirements)
+        add_library(pause_stdexec_requirements INTERFACE IMPORTED)
+    endif()
     foreach(property IN ITEMS
             INTERFACE_INCLUDE_DIRECTORIES INTERFACE_SYSTEM_INCLUDE_DIRECTORIES
             INTERFACE_COMPILE_FEATURES INTERFACE_COMPILE_OPTIONS
@@ -19,6 +28,7 @@ function(pause_check_stdexec)
             set_property(TARGET pause_stdexec_requirements PROPERTY ${property} "${requirement}")
         endif()
     endforeach()
+    target_include_directories(pause_stdexec_requirements INTERFACE "${pause_include_dir}")
     if(MSVC)
         target_compile_options(pause_stdexec_requirements INTERFACE /EHsc)
     endif()
@@ -28,7 +38,7 @@ function(pause_check_stdexec)
     set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)
     message(STATUS "Checking stdexec interfaces required by Pause")
     try_compile(pause_stdexec_compatible
-        SOURCES "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/../tests/check_stdexec.cpp"
+        SOURCES "${probe_source}"
         NO_CACHE
         LINK_LIBRARIES pause_stdexec_requirements
         CXX_STANDARD 23
@@ -36,13 +46,16 @@ function(pause_check_stdexec)
         OUTPUT_VARIABLE compiler_output)
     file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/pause-stdexec-check.log" "${compiler_output}")
     if(NOT pause_stdexec_compatible)
+        message(WARNING "The selected stdexec/toolchain is incompatible; automatic replacement is disabled.")
         message(FATAL_ERROR
             "The selected stdexec source or C++23 toolchain does not satisfy Pause's requirements.\n"
             "Required: sender member .affine() customization (stdexec PR #2103), "
             "completion_behavior, and the task/Pause sender interfaces.\n"
             "Known minimum upstream main revision: 5e22875aad04fd933a9f0405e09fe85c77bf07db "
             "(2026-07-05). A project version such as 0.11.0 is not sufficient.\n"
-            "Select a compatible PAUSE_STDEXEC_GIT_TAG or FETCHCONTENT_SOURCE_DIR_STDEXEC.\n"
+            "For an installed dependency, fix stdexec_DIR/CMAKE_PREFIX_PATH.\n"
+            "For a fetched dependency, select a compatible PAUSE_STDEXEC_GIT_TAG "
+            "or FETCHCONTENT_SOURCE_DIR_STDEXEC.\n"
             "Compiler details: ${CMAKE_CURRENT_BINARY_DIR}/pause-stdexec-check.log")
     endif()
     message(STATUS "Checking stdexec interfaces required by Pause - passed")

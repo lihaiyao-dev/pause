@@ -1,6 +1,9 @@
 #ifndef PAUSE_EXAMPLES_SUPPORT_HPP_
 #define PAUSE_EXAMPLES_SUPPORT_HPP_
 
+// Bound the header preamble before stdexec types (clice g1b5d0f3 workaround).
+namespace pause_examples { class RunLoopThread; }
+
 #include "pause.hpp"
 
 #include <exec/scope.hpp>

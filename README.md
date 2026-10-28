@@ -4,6 +4,15 @@
 
 **暂停是协作式的：正在执行的业务不会被抢占。** 每个参与分支必须到达暂停点或退出，整个屏障才能变成 `Paused`。任务启动、执行器、取消传播、任务组合和资源释放由宿主管理。
 
+| 阅读目的 | 入口 |
+| --- | --- |
+| 安装后接入库、处理错误与关闭 | [使用指南](docs/user-guide.md)；随包安装为 `share/pause/README.md` |
+| 从源码构建并运行案例 | 本文第 1、5 节 |
+| 理解状态机、责任转移与并发协议 | [设计契约](pause-branch-design.md)，含状态图、责任转移图和恢复/取消时序图 |
+| 打包、安装、更新或卸载 | [开发包说明](docs/packaging.md) |
+| 配置调试器、编辑器与本机环境 | [本地开发说明](docs/development.md) |
+| 查看测试入口和已执行的验证范围 | [测试指南](tests/README.md) |
+
 建议从 [简单示例](examples/simple_workflow.cpp) 开始：业务直接展开六个阶段，用 `then`、`let_value` 和嵌套 `when_all` 组合数据与异步操作；控制 task 按时间间隔发送暂停、单步、继续指令。日志会展示快任务已经完成、慢任务暂停时，外层 `when_all` 仍在等待；两个流程各自在一个完整函数中。进阶可看 [控制 task + 业务 task 综合示例](examples/controlled_workflow.cpp)，业务主体见 [controlled_business.hpp](examples/controlled_business.hpp)，包含串行调用、条件分支和递归并发组合。另有 [算法细分案例](examples/pause_workflows.cpp) 和 [独立任务与动态分支案例](examples/independent_jobs.cpp)。任务按值拥有 branch，stdexec 的算法负责启动、组合、取消和等待。`run_scope`、`ChangeSignal`、`take` 等执行器与控制辅助设施集中在 [example_support.hpp](examples/example_support.hpp)，不属于 Pause API。
 
 ## 1. 支持环境与构建
@@ -42,23 +51,22 @@ cmake --build build/compatible-stdexec
 
 `PAUSE_BUILD_EXAMPLES` 默认关闭。启用后生成 `pause_simple_workflow`、`pause_controlled_workflow`、`pause_workflows`、`pause_independent_jobs`；同时启用默认的 `PAUSE_BUILD_TESTS` 时，注册 28 个 `pause_example_` 测试。示例复用已有依赖，不改变公共 API。
 
+交互式图形案例使用独立开关 `PAUSE_BUILD_QT_EXAMPLE=ON`，默认关闭；开启时查找 **Qt 6.5+ Widgets**，生成 `pause_qt_workflow`。UI 集成暂停、继续、单步、取消、重启、耗时显示、概览和缩放。[接入入口](examples/qt_workflow.hpp) 提供最小长短路径预览，你可替换图布局与业务函数，用原生 `stdexec::when_all(...) | stdexec::let_value(...)` 自行组合；`RunContext::step/group` 封装安全点和状态显示，Session 控制同一个 PauseSource。真实业务显示实际耗时，可指定预计时长；随机延时仅用于预览。接入与构建说明见 [Qt 分支图示例](examples/qt_workflow.md)。
+
 项目内接入时链接头文件接口目标：
 
 ```cmake
 target_link_libraries(your_app PRIVATE pause::pause)
 ```
 
-### 1.1 用 LLDB DAP 调试 examples（本机 Windows 配置）
+发布包支持 ZIP/TGZ、指定目录安装/更新/卸载，以及
+`find_package(pause 0.1 CONFIG REQUIRED)`。stdexec 优先使用已安装的 CMake 包，
+未找到才自动获取固定提交；已有依赖不兼容时停止配置，不自动替换。
+命令、离线选项、版本兼容规则和回滚方法见[开发包说明](docs/packaging.md)。
+安装后可在 `<prefix>/share/pause/README.md` 离线查阅库介绍、API 速查和使用指南，
+同目录 `examples/` 附带可独立构建的简单工作流示例。
 
-仓库已提供 `.vscode/launch.json`、`tasks.json`、`settings.json` 和扩展推荐，适用于 VS Code/Cursor。本机已有官方 `llvm-vs-code-extensions.lldb-dap` 扩展。打开运行和调试面板，选择 **Pause: simple workflow (LLDB DAP)**，按 **F5** 即可在 `main` 停下。简单示例没有参数，可在 `work_task` 的 `3. validate: begin`、`4. fetch: begin`、`when_all returned` 日志处，以及 `control_task` 的 `source.request_pause`、`source.resume` 处设置断点。
-
-F5 前的任务会运行 `scripts/build-debug-examples.cmd`，自动初始化 VS x64 编译环境、启用 examples 并构建四个示例。`msvc-debug` preset 使用 `/Zi /Od` 和 `/DEBUG:FULL /INCREMENTAL:NO`，生成与 exe 配套的完整 PDB。其余三个入口分别调试综合示例、算法示例和动态任务树；参数通过下拉框选择。
-
-调试综合示例时，可选择 **Pause: control + work task (LLDB DAP)**，在 [work_task](examples/controlled_business.hpp) 的 `work: begin controlled workflow` 语句、`load_source`、`compute_shard` 和 [control_task](examples/controlled_workflow.cpp) 中设置断点，然后按 F5 继续。**F10** 逐过程、**F11** 逐语句、**Shift+F5** 停止调试。综合示例参数 `step` 控制 Pause 的业务轮次，F10/F11 控制调试器的源码步进；跨 `co_await` 挂起/恢复时可能进入 stdexec 帧，可在恢复后的业务语句设置断点。
-
-工作区选用已安装的 `D:/Libs/QT/Tools/QtCreator/bin/clang/bin/lldb-dap.exe`（LLVM 21.1.2），它自带 Python 运行时。没有新增软件依赖或修改系统环境。`D:/Libs/LLVM/bin` 的 22.1.3 在本机 DAP 初始化时触发 `SBFile(FILE*)` 路径的 fail-fast，不能仅凭 `--version` 成功就使用它。其他机器需将 `.vscode/settings.json` 中的适配器路径改为自己已验证可用的安装。
-
-已用真实 DAP 会话验证综合示例的 PDB 加载、`main` 断点、`controlled_business.hpp` 第 68 行断点、`next` 到第 70 行以及退出码 0，日志为 `build/lldb-dap-validation.json`。本机 MSVC 协程恢复帧在 LLDB 中可能显示地址而非函数名，局部变量视图可能为空；这次验证不代表完整的协程变量可视化支持。
+开发调试与编辑器设置见 [本地开发说明](docs/development.md)，包含 LLDB DAP、clice 和本机 Qt 编译数据库的配置。
 
 ## 2. 先理解三个对象
 
@@ -405,20 +413,6 @@ Open 暂停点同步通过，不会隐式 yield。大量 Open 暂停点不保证
 
 每个暂停 operation 从 receiver environment 获取停止 token，并注册 callback。恢复和取消在锁内争夺唯一完成权，通知与实际 completion 在锁外执行。Open 路径直接完成；已等待的正常恢复通过原 scheduler 调度；取消撤销当前分支责任并沿 stopped 通道退出。
 
-2026-09-23 文档与应用示例验收：MSVC **Debug 35/35（33.02 秒）、Release 35/35（14.58 秒）**，包含 13 个示例场景和 22 个既有回归。此次验证范围是示例构建及完整回归；本地日志为 `build/usage-examples-all.log`。
+完整约束、异常边界和依赖接入要求见 [设计契约](pause-branch-design.md)。当前测试入口见 [tests/README.md](tests/README.md)，设计条款与具体场景的对应关系见 [逐场景矩阵](tests/pause-contract-scenario-matrix.md)，已执行范围见 [验收报告](tests/pause-contract-validation-2026-09-25.md)及 [目录整理验证](tests/test-layout-validation-2026-09-25.md)。
 
-2026-09-24 命名空间迁移验收：MSVC **Debug 35/35（42.46 秒）、Release 35/35（23.29 秒）**；日志为 `build/namespace-rename-validation.log`。WSL/Debian 13、GCC 14.2 使用 `-std=c++23 -O2 -DNDEBUG -pthread`，在无 shim 情况下通过含真实 `<unistd.h>` 的双翻译单元编译、链接及运行测试；TSan 脚本通过 Bash 语法检查，本次未重跑 TSan 压测。
-
-2026-09-24 结构化并发示例验收：MSVC **Debug 43/43（37.48 秒）、Release 43/43（14.54 秒）**，包括 21 个示例场景和 22 个既有回归。新增验证覆盖 sender 数据流、bulk 空批次、跨 run_loop 屏障、when_any 取消与 join、动态宽度 2/3/8/32、整组取消及控制器异常清理。Debug 的 `parallel`、`race` 另各重复 50 次通过。日志为 `build/structured-debug-ctest.log`、`build/structured-release-ctest.log`、`build/structured-race-repeat.log`。本轮未运行 ASan/TSan，不扩大其他执行器或 stdexec 版本的兼容性承诺。
-
-2026-09-24 控制 task + 业务 task 综合示例验收：MSVC **Debug 49/49（38.77 秒）、Release 49/49（16.97 秒）**，包括 27 个示例场景和 22 个既有回归。新示例六个模式另在 Release 各重复 30 次，共 180 次通过；验证串行 await、条件分支、递归 fork/join、13/12 轮单步、转连续运行，以及双方 error/stop 的传播和清理。日志为 `build/controlled-workflow-debug-ctest.log`、`build/controlled-workflow-release-ctest.log`、`build/controlled-workflow-repeat.log`。本轮未运行 ASan/TSan；定时器仅用于控制 task 的观察等待，业务 Pause 仍运行于原有 run_loop 环境。
-
-2026-09-25 简单示例初版验收（已被下面的定时指令版替换）：MSVC Debug、Release 构建通过，全部示例测试分别 **28/28（7.78 秒）、28/28（6.69 秒）**。独立读取实时 stdout，核对等待数 `1 → 2 → 2 → 1`、每轮约 1 秒停顿且暂停期间无业务输出；程序同时校验暂停期间步数不变及最终 branch 释放。日志为 `build/simple-debug-ctest.log`、`build/simple-release-ctest.log`、`build/simple-timing-validation.log`。新增 LLDB 入口已检查配置、目标 exe 与 PDB；本轮未重跑 DAP 会话、组件全量测试或 ASan/TSan。
-
-2026-09-25 简单示例串行定时指令版验收（后续加入下述业务内 `when_all`）：MSVC Debug、Release 构建通过，全部示例测试分别 **28/28（7.77 秒）、28/28（7.49 秒）**。独立记录实时 stdout，验证业务异步 sleep、`PAUSE` 后当前步骤仍能结束、两次真实暂停各保持约 1 秒、`STEP` 恰好执行一步，以及控制器发完 `CONTINUE` 后剩余业务正常完成；程序同时检查暂停期间计数不变及最终 branch 释放。日志为 `build/simple-commands-debug-ctest.log`、`build/simple-commands-release-ctest.log`、`build/simple-commands-timing-validation.log`。本轮仅修改简单示例及说明，未重跑 DAP 会话、组件全量测试或 ASan/TSan。
-
-2026-09-25 简单示例业务内 `when_all` 验收：MSVC Debug、Release 构建通过，全部示例测试分别 **28/28（7.67 秒）、28/28（7.50 秒）**。独立记录实时 stdout，验证快任务先完成、慢任务两次暂停期间 `when_all` 一直等待、单步只完成一步，以及慢任务最终完成后父任务才越过 `when_all`。程序同时检查暂停时只有一个 waiter、慢任务计数不变和最终 branch 全部释放。日志为 `build/simple-when-all-debug-ctest.log`、`build/simple-when-all-release-ctest.log`、`build/simple-when-all-timing-validation.log`。本轮未重跑 DAP 会话、组件全量测试或 ASan/TSan。
-
-2026-09-25 简单示例展开与组合验收：业务去掉循环，直接展开加载、转换、条件校验、并发取数、汇总、发布。MSVC Debug、Release 构建通过，全部示例测试分别 **28/28（7.59 秒）、28/28（7.39 秒）**。实时日志验证各阶段数值 `20 → 42 → (42, 3) → 45`、外层汇总结果 `55`，以及内层 `when_all` 等待两份数据、暂停期间外层 `when_all` 持续等待、单步只完成一个阶段。日志为 `build/simple-composition-debug-ctest.log`、`build/simple-composition-release-ctest.log`、`build/simple-composition-timing-validation.log`。本轮未重跑 DAP 会话、组件全量测试或 ASan/TSan。
-
-完整约束、异常边界和依赖接入要求见 [设计契约](pause-branch-design.md)。测试范围与复现方法见 [tests/README.md](tests/README.md)、[实现验收记录](tests/pause-implementation-validation-2026-09-23.md) 和此前的 [Release 极端测试报告](tests/pause-release-extreme-validation-2026-09-23.md)。既有有限测试矩阵不能证明所有线程交错；升级 stdexec 或更换 scheduler/宿主时，需要重新验证取消传播、调度与 frame 释放契约。
+历次示例、命名空间迁移的结果和本地日志路径集中在 [历史验证记录](tests/example-validation-history.md)。这些结果绑定各自日期与输入，不代表当前版本重新执行。升级 stdexec 或更换 scheduler/宿主时，需要重新验证取消传播、调度与 frame 释放契约。

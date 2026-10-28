@@ -4,7 +4,7 @@
  * cmake/CheckPauseStdexec.cmake 每次配置用 try_compile 生成静态库；应编译成功。
  * 无 main、无运行；不证明 ABI 布局、线程安全或所有 stdexec 版本兼容。
  */
-#include "../pause.hpp"
+#include <pause.hpp>
 
 namespace {
 

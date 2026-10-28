@@ -1,0 +1,12 @@
+# Installed example: consumes only the installed Pause package.
+cmake_minimum_required(VERSION 3.25)
+project(pause_installed_example LANGUAGES CXX)
+find_package(pause 0.1 CONFIG REQUIRED)
+add_executable(pause_simple_workflow simple_workflow.cpp)
+target_link_libraries(pause_simple_workflow PRIVATE pause::pause)
+if(MSVC)
+    target_compile_options(pause_simple_workflow PRIVATE /utf-8)
+endif()
+enable_testing()
+add_test(NAME pause_example_simple COMMAND pause_simple_workflow)
+set_tests_properties(pause_example_simple PROPERTIES TIMEOUT 30)

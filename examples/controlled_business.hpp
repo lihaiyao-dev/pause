@@ -1,6 +1,11 @@
 #ifndef PAUSE_EXAMPLES_CONTROLLED_BUSINESS_HPP_
 #define PAUSE_EXAMPLES_CONTROLLED_BUSINESS_HPP_
 
+// Bound the header preamble before stdexec types (clice g1b5d0f3 workaround).
+namespace pause_controlled {
+enum class Mode { Step, Continue, SkipOptional, Cancel, WorkError, ControlError };
+}
+
 #include "example_support.hpp"
 
 #include <cstdio>
@@ -10,8 +15,6 @@
 namespace pause_controlled {
 using pause_examples::PauseBranch;
 using pause_examples::take;
-
-enum class Mode { Step, Continue, SkipOptional, Cancel, WorkError, ControlError };
 
 struct Progress {
     // control_task 与整个业务树运行在同一个 run_loop 上；宿主仅在 join 后读取。

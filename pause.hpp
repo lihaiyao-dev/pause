@@ -1,6 +1,14 @@
 #ifndef PAUSE_HPP_
 #define PAUSE_HPP_
 
+// Keep the dependency-independent control modes before the heavy includes.
+// This also bounds the header preamble for clice's stdexec/PCH workaround.
+namespace coop_pause {
+enum class AdvanceMode { Continuous, SingleStep };
+enum class PauseOrigin { ControlRequest, SingleStep };
+enum class GatePhase { Open, Collecting, Paused };
+}
+
 #include <exec/completion_behavior.hpp>
 #include <stdexec/execution.hpp>
 
@@ -21,10 +29,6 @@
 #include <vector>
 
 namespace coop_pause {
-
-enum class AdvanceMode { Continuous, SingleStep };
-enum class PauseOrigin { ControlRequest, SingleStep };
-enum class GatePhase { Open, Collecting, Paused };
 
 struct PausePointInfo {
     std::size_t tag = 0;

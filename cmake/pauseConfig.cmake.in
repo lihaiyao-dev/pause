@@ -1,0 +1,17 @@
+@PACKAGE_INIT@
+
+include("${CMAKE_CURRENT_LIST_DIR}/PauseDependency.cmake")
+pause_resolve_stdexec()
+include("${CMAKE_CURRENT_LIST_DIR}/CheckPauseStdexec.cmake")
+pause_check_stdexec("${CMAKE_CURRENT_LIST_DIR}/check_stdexec.cpp"
+    "${CMAKE_CURRENT_LIST_DIR}/@pause_config_to_include@")
+if(NOT TARGET pause::pause)
+    include("${CMAKE_CURRENT_LIST_DIR}/pauseTargets.cmake")
+    set_property(TARGET pause::pause APPEND PROPERTY
+        INTERFACE_LINK_LIBRARIES STDEXEC::stdexec)
+    # This header-only archive can be produced with a different compiler/OS.
+    if(MSVC)
+        set_property(TARGET pause::pause APPEND PROPERTY INTERFACE_COMPILE_OPTIONS /EHsc)
+    endif()
+endif()
+check_required_components(pause)
