@@ -1,0 +1,16 @@
+name: Feature request
+description: 提出使用场景或接口改进
+body:
+  - type: textarea
+    id: use_case
+    attributes:
+      label: 使用场景与当前限制
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: 期望行为
+      description: 说明已有方案、替代方案以及对 API、并发或生命周期的影响。
+    validations:
+      required: true

@@ -1,7 +1,7 @@
-﻿<#
+<#
 测试项目：当前 MSVC Release 二进制的大基数回归驱动。
 覆盖 Pause 场景、异常/死亡测试、资源/生命周期/并发矩阵及 stdexec/模型独立测试；
-具体断言见同名 tests/*.cpp。先验证 /O2 /DNDEBUG 与源文件时间戳，再逐进程执行。
+具体断言见 tests/runtime/ 和 tests/design/ 中的同名源码。先验证 /O2 /DNDEBUG 与源文件时间戳，再逐进程执行。
 -Iterations 控制完整用例重复，-OrdinaryIterations/-ApiIterations 可单独加压；
 -DeepIterations 重复固定深度，不增加递归层数；-TerminationIterations 控制死亡子进程。
 要求先运行 scripts/msvc-cmake.cmd test release；支持 -OnlyTest 选一项。
@@ -19,8 +19,8 @@ param(
     [ValidateSet('pause_integration_test','pause_sender_test','pause_sender_hook_test',
         'pause_sender_death_test','pause_contract_death_test','pause_resource_test','pause_task_lifetime_test',
         'pause_extreme_test','pause_batch_extreme_test','pause_transition_extreme_test',
-        'pause_concurrency_stress_test','pause_exception_matrix_test','pause_notification_matrix_test',
-        'pause_outer_lifetime_test','pause_host_failure_test',
+        'pause_concurrency_stress_test','pause_exception_matrix_test','pause_notification_matrix_test','pause_phase_test',
+        'pause_outer_lifetime_test','pause_host_failure_test','pause_scheduler_test',
         'pause_state_model_test',
         'stdexec_stop_callback_test','stdexec_stop_callback_hook_test',
         'stdexec_callback_affine_lifetime_test','stdexec_task_lifetime_test',
@@ -49,8 +49,8 @@ $pauseOutput = (Resolve-Path -LiteralPath $OutputDirectory).Path
 $pauseTests = @('pause_integration_test','pause_sender_test','pause_sender_hook_test',
     'pause_resource_test','pause_task_lifetime_test','pause_extreme_test',
     'pause_batch_extreme_test','pause_transition_extreme_test','pause_concurrency_stress_test',
-    'pause_exception_matrix_test','pause_notification_matrix_test',
-    'pause_outer_lifetime_test','pause_host_failure_test',
+    'pause_exception_matrix_test','pause_notification_matrix_test','pause_phase_test',
+    'pause_outer_lifetime_test','pause_host_failure_test','pause_scheduler_test',
     'pause_sender_death_test','pause_contract_death_test','pause_state_model_test',
     'stdexec_stop_callback_test','stdexec_stop_callback_hook_test',
     'stdexec_callback_affine_lifetime_test','stdexec_task_lifetime_test',
@@ -68,7 +68,8 @@ function Get-PauseHashes($Paths) {
 
 foreach ($testName in $pauseTests) {
     $executable = Join-Path $pauseBuild "$testName.exe"
-    $source = Join-Path $pauseRoot "tests/$testName.cpp"
+    $testGroup = if ($testName -like 'stdexec_*' -or $testName -eq 'pause_state_model_test') { 'design' } else { 'runtime' }
+    $source = Join-Path $pauseRoot "tests/$testGroup/$testName.cpp"
     $compile = @($pauseCommands | Where-Object { (Split-Path $_.file -Leaf) -eq "$testName.cpp" })
     if ($compile.Count -ne 1 -or $compile[0].command -notmatch '/O2\b' -or
         $compile[0].command -notmatch '/DNDEBUG\b') {
@@ -77,21 +78,23 @@ foreach ($testName in $pauseTests) {
     $paths = [ordered]@{
         header = Join-Path $pauseRoot 'pause.hpp'
         source = $source
-        support = Join-Path $pauseRoot 'tests/pause_sender_test_support.hpp'
+        support = Join-Path $pauseRoot 'tests/runtime/pause_sender_test_support.hpp'
+        notification_support = Join-Path $pauseRoot 'tests/support/pause_test_notifications.hpp'
         binary = $executable
         pinned_stop_token = Join-Path $pauseStdexec 'include/stdexec/stop_token.hpp'
     }
     if ($testName -eq 'pause_sender_hook_test') {
         $paths.instrumented_stop_token = Join-Path $pauseBuild 'pause-instrumented-stdexec/stdexec/stop_token.hpp'
     }
-    if ($testName -eq 'pause_host_failure_test') {
-        $paths.example_support = Join-Path $pauseRoot 'examples/example_support.hpp'
+    if ($testName -in @('pause_host_failure_test','pause_scheduler_test')) {
+        $paths.example_support = Join-Path $pauseRoot 'examples/common/example_support.hpp'
     }
     $inputs = @($source, $paths.pinned_stop_token)
     if ($paths.Contains('instrumented_stop_token')) { $inputs += $paths.instrumented_stop_token }
     if ($paths.Contains('example_support')) { $inputs += $paths.example_support }
     if ($testName -notlike 'stdexec_*' -and $testName -ne 'pause_state_model_test') {
         $inputs += $paths.header
+        $inputs += $paths.notification_support
     }
     if ((Get-Content -LiteralPath $source -Raw) -match '#include "pause_sender_test_support.hpp"') {
         $inputs += $paths.support

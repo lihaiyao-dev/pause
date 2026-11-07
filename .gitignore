@@ -11,7 +11,7 @@
 /.ninja_deps
 /.ninja_log
 /CMakeUserPresets.json
-# Hand-authored compilation databases under tests are fixtures and stay tracked.
+# Ignore only the compilation database generated at the repository root.
 /compile_commands.json
 
 # Compiled objects, libraries, executables and debug data.

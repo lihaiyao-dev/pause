@@ -7,6 +7,9 @@ Pause 是 C++23 头文件库，不生成 `.lib`/`.dll`。开发包包含 `pause.
 暂停/单步语义、取消和生命周期要求及故障排查。同目录的 `examples/` 提供简单示例、
 辅助头文件和独立 CMake 工程，可直接使用已安装的 `pause::pause` 构建。
 文档和示例纳入包清单，随更新替换、随卸载移除；请在安装目录外构建或修改示例。
+同目录同时安装 `LICENSE`、`CHANGELOG.md` 和 `THIRD_PARTY_NOTICES.md`。
+`LICENSE` 包含 `Apache-2.0 WITH LLVM-exception` 的完整条款。
+仓库发布前的检查及归档摘要生成见源码树中的 `CONTRIBUTING.md` 发布章节。
 
 ## 构建 ZIP / TGZ
 
@@ -83,7 +86,10 @@ target_link_libraries(app PRIVATE pause::pause)
 1. 优先复用已有 `STDEXEC::stdexec` 目标，否则 `find_package(stdexec CONFIG QUIET)`。
 2. 找到后编译检查实际接口；失败给出警告并终止配置，**不下载其他版本替换**。
 3. 未找到时用 FetchContent 下载固定提交
-   `f0e8ae6fdc6c188389b146bb854b80d399724b04`，同样执行接口检查。
+   `a23aa7abc8796edf158ff67afaf732a6dad3e2a5`，同样执行接口检查。
+
+此基线包含 [when_all/when_any 取消竞争修复](https://github.com/NVIDIA/stdexec/commit/a23aa7abc8796edf158ff67afaf732a6dad3e2a5)。
+配置也检查已知有缺陷的 `when_all` 实现；仅接口兼容的旧包仍会被拒绝，且不会被自动替换。
 
 自动下载仅填充当前构建目录，不向系统安装依赖。CMake 包查找遵循 `stdexec_DIR`、
 `CMAKE_PREFIX_PATH` 和标准搜索规则，不扫描所有磁盘上的裸头文件。破损的已发现配置也
@@ -95,24 +101,29 @@ target_link_libraries(app PRIVATE pause::pause)
 RAPIDS/ICM 等构建辅助依赖。自动下载固定提交要求 **CMake 3.28+**（上游要求），
 且首次配置需要 Git、网络和支持相应 C++23 特性的编译器。
 
-独立安装 stdexec 的示例（`<stdexec-source>` 为兼容提交）：
+独立安装 stdexec 的示例（`<stdexec-source>` 为兼容提交；当前 run_loop 和静态线程池直接接入不需要 parallel scheduler 编译后端）：
 
 ```powershell
-cmake -S <stdexec-source> -B build/stdexec -G Ninja -DCMAKE_BUILD_TYPE=Release -DSTDEXEC_INSTALL=ON -DSTDEXEC_BUILD_TESTS=OFF -DSTDEXEC_BUILD_EXAMPLES=OFF
+cmake -S <stdexec-source> -B build/stdexec -G Ninja -DCMAKE_BUILD_TYPE=Release -DSTDEXEC_INSTALL=ON -DSTDEXEC_BUILD_TESTS=OFF -DSTDEXEC_BUILD_EXAMPLES=OFF -DSTDEXEC_BUILD_PARALLEL_SCHEDULER=OFF
+cmake --build build/stdexec
 cmake --install build/stdexec --prefix D:/sdk/stdexec
 cmake -S <consumer-source> -B build/consumer "-DCMAKE_PREFIX_PATH=D:/sdk/pause;D:/sdk/stdexec"
 cmake --build build/consumer
 ```
 
+> **备注：** `STDEXEC_BUILD_PARALLEL_SCHEDULER=OFF` 只关闭 parallel scheduler 的编译后端，
+> 不影响静态线程池使用多个 worker。启用该后端也不会改变其与当前默认 task 的完成契约
+> 不兼容这一限制；选择调度器前请阅读使用指南中的“调度器接入”小节。
+
 stdexec 的 `0.11.0` 不能区分所需 `.affine()` 接口是否存在，因此不使用数字版本作为
-充分条件。检查 `.affine()` 定制、`completion_behavior`、真实 Pause/default task 接口；
+充分条件。检查 `.affine()` 定制、`completion_behavior`、真实 Pause/default task 及原生线程池直接接入接口；
 失败详情位于消费者构建目录的 `pause-stdexec-check.log`。检查只编译静态库、不执行
 目标程序，适用于交叉编译。通过检查不等于完整并发/生命周期兼容认证。项目内部插桩
 测试仍要求默认提交的头文件哈希；改用其他兼容版本时关闭实现测试和设计测试。
 
 ## 采用的上游惯例
 
-- [NVIDIA/stdexec 固定提交的 CMakeLists.txt](https://github.com/NVIDIA/stdexec/blob/f0e8ae6fdc6c188389b146bb854b80d399724b04/CMakeLists.txt)：独立安装、命名空间目标与导出使用要求。
+- [NVIDIA/stdexec 固定提交的 CMakeLists.txt](https://github.com/NVIDIA/stdexec/blob/a23aa7abc8796edf158ff67afaf732a6dad3e2a5/CMakeLists.txt)：独立安装、命名空间目标与导出使用要求。
 - [CMake 导入/导出指南](https://cmake.org/cmake/help/latest/guide/importing-exporting/index.html)：`install(EXPORT)` 与可搬移目标。
 - [CMakePackageConfigHelpers](https://cmake.org/cmake/help/latest/module/CMakePackageConfigHelpers.html)：可搬移 Config 与架构无关版本文件。
 - [CPack Archive](https://cmake.org/cmake/help/latest/cpack_gen/archive.html)：ZIP/TGZ 开发包。

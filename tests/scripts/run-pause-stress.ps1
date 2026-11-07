@@ -1,4 +1,4 @@
-﻿<#
+<#
 测试项目：MSVC AddressSanitizer 构建与逐进程压力验收。
 编译当前 tests 中的 Pause 运行时、异常、契约终止、生命周期、模型和依赖探针；
 使用 /O2 /fsanitize=address，按测试需要启用 NDEBUG，不能等同普通 Release 构建。
@@ -18,8 +18,8 @@ param(
     [ValidateRange(1,7200)][int]$TimeoutSeconds = 1800,
     [ValidateSet('pause_integration_test','pause_sender_test','pause_sender_hook_test',
         'pause_sender_death_test','pause_contract_death_test','pause_resource_test','pause_task_lifetime_test','pause_concurrency_stress_test',
-        'pause_exception_matrix_test','pause_notification_matrix_test',
-        'pause_outer_lifetime_test','pause_host_failure_test',
+        'pause_exception_matrix_test','pause_notification_matrix_test','pause_phase_test',
+        'pause_outer_lifetime_test','pause_host_failure_test','pause_scheduler_test',
         'pause_extreme_test','pause_batch_extreme_test','pause_transition_extreme_test',
         'pause_state_model_test','stdexec_stop_callback_test','stdexec_stop_callback_hook_test',
         'stdexec_callback_affine_lifetime_test','stdexec_task_lifetime_test',
@@ -38,8 +38,13 @@ if (-not (Get-Command cl.exe -ErrorAction SilentlyContinue)) {
 }
 New-Item -ItemType Directory -Path $OutputDirectory -Force | Out-Null
 $pauseOutput = (Resolve-Path -LiteralPath $OutputDirectory).Path
-$pauseInclude = Join-Path $pauseRoot 'build/msvc-debug/_deps/stdexec-src/include'
-$pauseHooks = Join-Path $pauseRoot 'build/msvc-debug/pause-instrumented-stdexec'
+$pauseBuild = Join-Path $pauseRoot 'build/msvc-debug'
+$pauseCache = Get-Content -LiteralPath "$pauseBuild/CMakeCache.txt" -Raw
+if ($pauseCache -notmatch '(?m)^STDEXEC_SOURCE_DIR:STATIC=(.+)\r?$') {
+    throw 'Cannot locate the pinned stdexec source; run scripts/msvc-cmake.cmd test debug first.'
+}
+$pauseInclude = Join-Path $Matches[1].Trim() 'include'
+$pauseHooks = Join-Path $pauseBuild 'pause-instrumented-stdexec'
 if (-not (Test-Path -LiteralPath "$pauseHooks/stdexec/stop_token.hpp")) {
     throw 'First run scripts/msvc-cmake.cmd test to generate the test-only stdexec tree.'
 }
@@ -48,8 +53,8 @@ $pauseTests = @(
     'pause_integration_test', 'pause_sender_test', 'pause_sender_hook_test',
     'pause_sender_death_test', 'pause_contract_death_test', 'pause_resource_test', 'pause_task_lifetime_test',
     'pause_concurrency_stress_test', 'pause_state_model_test',
-    'pause_exception_matrix_test', 'pause_notification_matrix_test',
-    'pause_outer_lifetime_test', 'pause_host_failure_test',
+    'pause_exception_matrix_test', 'pause_notification_matrix_test','pause_phase_test',
+    'pause_outer_lifetime_test', 'pause_host_failure_test','pause_scheduler_test',
     'pause_extreme_test', 'pause_batch_extreme_test', 'pause_transition_extreme_test',
     'stdexec_stop_callback_test', 'stdexec_stop_callback_hook_test',
     'stdexec_callback_affine_lifetime_test', 'stdexec_task_lifetime_test',
@@ -60,12 +65,14 @@ if ($OnlyTest) { $pauseTests = @($OnlyTest) }
 $pauseResults = [System.Collections.Generic.List[object]]::new()
 $pauseBuildHashes = @{}
 foreach ($testName in $pauseTests) {
+    $testGroup = if ($testName -like 'stdexec_*' -or $testName -eq 'pause_state_model_test') { 'design' } else { 'runtime' }
+    $testSource = Join-Path $pauseRoot "tests/$testGroup/$testName.cpp"
     $testInclude = if ($testName -eq 'pause_sender_hook_test') { $pauseHooks } else { $pauseInclude }
     $buildArgs = @('/nologo', '/std:c++latest', '/Zc:__cplusplus', '/Zc:preprocessor',
-        '/EHsc', '/MD', '/O2', '/Zi', '/fsanitize=address', "/I$pauseRoot", "/I$testInclude",
+        '/EHsc', '/bigobj', '/MD', '/O2', '/Zi', '/fsanitize=address', "/I$pauseRoot", "/I$testInclude",
         "/I$pauseInclude/stdexec", "/I$pauseRoot/build/msvc-debug/pause-test-hooks",
         "/Fe$pauseOutput/$testName.exe", "/Fo$pauseOutput/$testName.obj",
-        "/Fd$pauseOutput/$testName.pdb", "tests/$testName.cpp", '/link', '/INCREMENTAL:NO')
+        "/Fd$pauseOutput/$testName.pdb", $testSource, '/link', '/INCREMENTAL:NO')
     if ($testName -in @('pause_integration_test','pause_extreme_test','pause_batch_extreme_test','pause_contract_death_test')) {
         $buildArgs = @('/DNDEBUG') + $buildArgs
     }
@@ -73,7 +80,7 @@ foreach ($testName in $pauseTests) {
     if ($LASTEXITCODE -ne 0) { throw "Build failed: $testName; see its build log." }
     $pauseBuildHashes[$testName] = @{
         header = (Get-FileHash -LiteralPath 'pause.hpp' -Algorithm SHA256).Hash
-        source = (Get-FileHash -LiteralPath "tests/$testName.cpp" -Algorithm SHA256).Hash
+        source = (Get-FileHash -LiteralPath $testSource -Algorithm SHA256).Hash
     }
     Write-Host "Built ASan: $testName"
 }

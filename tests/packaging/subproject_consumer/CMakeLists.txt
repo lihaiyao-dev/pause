@@ -1,0 +1,21 @@
+cmake_minimum_required(VERSION 3.25)
+project(pause_subproject_consumer LANGUAGES CXX)
+
+if(NOT IS_DIRECTORY "${PAUSE_SOURCE_DIR}")
+    message(FATAL_ERROR "Set PAUSE_SOURCE_DIR to the Pause source checkout")
+endif()
+enable_testing()
+add_subdirectory("${PAUSE_SOURCE_DIR}" pause)
+foreach(option IN ITEMS PAUSE_BUILD_TESTS PAUSE_BUILD_TOOLCHAIN_SMOKE_TEST
+                        PAUSE_BUILD_DESIGN_TESTS PAUSE_BUILD_EXAMPLES
+                        PAUSE_INSTALL)
+    if(${option})
+        message(FATAL_ERROR "Pause enabled a maintenance feature in its consumer: ${option}")
+    endif()
+endforeach()
+if(TARGET pause_integration_test OR TARGET pause_header_compile)
+    message(FATAL_ERROR "Pause added maintenance executables to its consumer")
+endif()
+add_executable(subproject_consumer ../package_consumer/main.cpp)
+target_link_libraries(subproject_consumer PRIVATE pause::pause)
+add_test(NAME subproject_consumer COMMAND subproject_consumer)

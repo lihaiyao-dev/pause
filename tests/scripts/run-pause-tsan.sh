@@ -41,7 +41,7 @@ while (($#)); do
         --help)
             printf '%s\n' \
                 'Usage: bash tests/scripts/run-pause-tsan.sh [--iterations 1000] [--deep-iterations 1]' \
-                '       [--suite all|sender|integration|hook|lifetime|batch|extreme|concurrency|exception|notification|resource|transition|outer|host]' \
+                '       [--suite all|sender|integration|hook|lifetime|batch|extreme|concurrency|exception|notification|resource|transition|outer|host|scheduler|phase]' \
                 '       [--release] [--cxx g++] [--build-dir PATH] [--stdexec-source PATH] [--timeout 300]' \
                 '--release uses -O2 -DNDEBUG; otherwise keeps -O1 with internal debug invariants.' \
                 'Requires Linux C++23 compiler with TSan, CMake, timeout, and setarch.' \
@@ -66,7 +66,7 @@ if [[ ! "$test_timeout" =~ ^[1-9][0-9]*$ ]]; then
     exit 2
 fi
 case "$suite" in
-    all) tests=(pause_sender_test pause_integration_test pause_sender_hook_test pause_task_lifetime_test pause_batch_extreme_test pause_extreme_test pause_concurrency_stress_test pause_exception_matrix_test pause_notification_matrix_test pause_resource_test pause_transition_extreme_test pause_outer_lifetime_test pause_host_failure_test) ;;
+    all) tests=(pause_sender_test pause_integration_test pause_sender_hook_test pause_task_lifetime_test pause_batch_extreme_test pause_extreme_test pause_concurrency_stress_test pause_exception_matrix_test pause_notification_matrix_test pause_resource_test pause_transition_extreme_test pause_outer_lifetime_test pause_host_failure_test pause_scheduler_test pause_phase_test) ;;
     sender) tests=(pause_sender_test) ;;
     integration) tests=(pause_integration_test) ;;
     hook) tests=(pause_sender_hook_test) ;;
@@ -80,6 +80,8 @@ case "$suite" in
     transition) tests=(pause_transition_extreme_test) ;;
     outer) tests=(pause_outer_lifetime_test) ;;
     host) tests=(pause_host_failure_test) ;;
+    scheduler) tests=(pause_scheduler_test) ;;
+    phase) tests=(pause_phase_test) ;;
     *) printf 'unknown suite: %s\n' "$suite" >&2; exit 2 ;;
 esac
 
@@ -96,8 +98,9 @@ for tool in "$compiler" cmake timeout setarch; do command -v "$tool" >/dev/null;
 if [[ "$suite" == all || "$suite" == hook ]]; then
     # Reuse the same pinned hash checks and insertion-count checks as CMake's
     # Windows hook tests. Only this build directory receives instrumented files.
-    (cd -- "$build_dir" && cmake "-Dstdexec_SOURCE_DIR=$stdexec_source" \
-        -P "$repo_dir/tests/instrument_pause_stdexec.cmake")
+    (cd -- "$build_dir" && cmake "-Dpause_stdexec_include_dir=$stdexec_source/include" \
+        -DPAUSE_BUILD_TESTS=ON \
+        -P "$repo_dir/tests/scripts/instrument_pause_stdexec.cmake")
 fi
 
 for test_name in "${tests[@]}"; do
@@ -110,7 +113,7 @@ for test_name in "${tests[@]}"; do
     if ! "$compiler" -std=c++23 -pthread -g "${optimization[@]}" -fsanitize=thread \
         -fno-omit-frame-pointer -fno-pie -no-pie \
         "${includes[@]}" \
-        "$repo_dir/tests/$test_name.cpp" -o "$build_dir/$test_name" \
+        "$repo_dir/tests/runtime/$test_name.cpp" -o "$build_dir/$test_name" \
         > "$build_dir/$test_name-compile.log" 2>&1; then
         cat "$build_dir/$test_name-compile.log" >&2
         exit 1

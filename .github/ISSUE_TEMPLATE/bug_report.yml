@@ -1,0 +1,32 @@
+name: Bug report
+description: 报告可以复现的行为问题
+body:
+  - type: markdown
+    attributes:
+      value: |
+        安全问题请先阅读 SECURITY.md。请勿上传凭据、内部地址、个人路径或私人代码。
+  - type: textarea
+    id: environment
+    attributes:
+      label: 版本与环境
+      description: Pause 提交、stdexec 提交、OS、编译器、CMake、构建类型及相关开关。
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: 最小复现与命令
+      description: 提供最小公开代码、构建和执行步骤；并发问题请说明调度、取消和释放顺序。
+    validations:
+      required: true
+  - type: textarea
+    id: behavior
+    attributes:
+      label: 预期与实际行为
+    validations:
+      required: true
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: 已去敏的诊断
+      description: 可选的堆栈、sanitizer 报告或测试输出。

@@ -1,0 +1,59 @@
+name: CI
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  repository:
+    name: Repository checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Check source, documents, and history
+        run: python3 scripts/check-repository.py --history
+      - name: Test publication checks
+        run: python3 -m unittest discover -s tests/repository -p "test_repository_checks.py"
+      - name: Check portable package management
+        run: cmake -DOUTPUT_DIRECTORY="$RUNNER_TEMP/pause-package-tests" -P tests/packaging/package_manager_test.cmake
+
+  windows:
+    name: Windows MSVC (${{ matrix.configuration }})
+    needs: repository
+    runs-on: windows-2022
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        configuration: [debug, release]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Build, test, and validate packages
+        shell: cmd
+        run: scripts\msvc-cmake.cmd ${{ matrix.configuration == 'release' && 'release' || 'test debug' }}
+      - name: Upload development packages
+        if: matrix.configuration == 'release'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: pause-development-packages
+          path: |
+            build/release-validation/run-*/archives/pause-*.zip
+            build/release-validation/run-*/archives/pause-*.tar.gz
+            build/release-validation/run-*/archives/pause-*.sha256
+          if-no-files-found: error
+          retention-days: 14

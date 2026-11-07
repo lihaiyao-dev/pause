@@ -10,63 +10,63 @@
       "cwd": "${workspaceFolder}",
       "console": "internalConsole",
       "preLaunchTask": "Pause: build Debug examples",
-      "preRunCommands": ["breakpoint set --name main"]
+      "preRunCommands": [
+        "breakpoint set --name main"
+      ]
     },
     {
-      "name": "Pause: control + work task (LLDB DAP)",
+      "name": "Pause: thread pool (LLDB DAP)",
       "type": "lldb-dap",
       "request": "launch",
-      "program": "${workspaceFolder}/build/msvc-debug/pause_controlled_workflow.exe",
-      "args": ["${input:controlledScenario}"],
+      "program": "${workspaceFolder}/build/msvc-debug/pause_thread_pool.exe",
+      "args": [
+        "${input:workerCount}"
+      ],
       "cwd": "${workspaceFolder}",
       "console": "internalConsole",
       "preLaunchTask": "Pause: build Debug examples",
-      "preRunCommands": ["breakpoint set --name main"]
+      "preRunCommands": [
+        "breakpoint set --name main"
+      ]
     },
     {
-      "name": "Pause: algorithms (LLDB DAP)",
+      "name": "Pause: cancellation (LLDB DAP)",
       "type": "lldb-dap",
       "request": "launch",
-      "program": "${workspaceFolder}/build/msvc-debug/pause_workflows.exe",
-      "args": ["${input:workflowScenario}"],
+      "program": "${workspaceFolder}/build/msvc-debug/pause_cancellation.exe",
+      "args": [],
       "cwd": "${workspaceFolder}",
       "console": "internalConsole",
       "preLaunchTask": "Pause: build Debug examples",
-      "preRunCommands": ["breakpoint set --name main"]
+      "preRunCommands": [
+        "breakpoint set --name main"
+      ]
     },
     {
-      "name": "Pause: dynamic task tree (LLDB DAP)",
+      "name": "Pause: sender pipeline (LLDB DAP)",
       "type": "lldb-dap",
       "request": "launch",
-      "program": "${workspaceFolder}/build/msvc-debug/pause_independent_jobs.exe",
-      "args": ["--dynamic", "${input:partitionCount}"],
+      "program": "${workspaceFolder}/build/msvc-debug/pause_sender_workflow.exe",
+      "args": [],
       "cwd": "${workspaceFolder}",
       "console": "internalConsole",
       "preLaunchTask": "Pause: build Debug examples",
-      "preRunCommands": ["breakpoint set --name main"]
+      "preRunCommands": [
+        "breakpoint set --name main"
+      ]
     }
   ],
   "inputs": [
     {
-      "id": "controlledScenario",
+      "id": "workerCount",
       "type": "pickString",
-      "description": "Controlled workflow scenario",
-      "options": ["step", "continue", "skip-optional", "cancel", "work-error", "control-error"],
-      "default": "step"
-    },
-    {
-      "id": "workflowScenario",
-      "type": "pickString",
-      "description": "Algorithm example",
-      "options": ["parallel", "sender-pipeline", "bulk", "race", "pipeline", "single-step", "nested", "cancel", "prestop", "error", "stopped", "optional", "optional-value", "optional-error"],
-      "default": "parallel"
-    },
-    {
-      "id": "partitionCount",
-      "type": "pickString",
-      "description": "Dynamic partition count",
-      "options": ["2", "3", "8", "32"],
-      "default": "8"
+      "description": "Thread pool workers",
+      "options": [
+        "1",
+        "2",
+        "4"
+      ],
+      "default": "4"
     }
   ]
 }

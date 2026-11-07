@@ -2,7 +2,6 @@
 
 include("${CMAKE_CURRENT_LIST_DIR}/PauseDependency.cmake")
 pause_resolve_stdexec()
-include("${CMAKE_CURRENT_LIST_DIR}/CheckPauseStdexec.cmake")
 pause_check_stdexec("${CMAKE_CURRENT_LIST_DIR}/check_stdexec.cpp"
     "${CMAKE_CURRENT_LIST_DIR}/@pause_config_to_include@")
 if(NOT TARGET pause::pause)
