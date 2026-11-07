@@ -10,11 +10,13 @@
 - `PausePhaseNotifications` 的三个可选阶段回调，以及读取当前暂停轮次的 `resume(AdvanceMode)` 便利重载。
 - 原生 run_loop、1/2/4 worker 静态线程池的直接接入回归，以及普通 sender 组合、真实双 worker 并行、运行中暂停和单步验证；不增加公共 scheduler 包装。
 - 项目维护文档、GitHub CI、仓库检查和发布验证入口。
+- 社区行为准则，以及 README 和贡献指南中的入口。
 - 开发包中的变更记录与第三方依赖说明。
 - `Apache-2.0 WITH LLVM-exception` 许可证及随包许可文本。
 
 ### Changed
 
+- 精简开发说明及公共头文件、示例中的编辑器专用注释。
 - `PauseSource` 的第二个参数改为 `PausePhaseNotifications`，默认 `{}`；替代原单个 `StateChangedNotifier`，只通知完整事务最终进入的新阶段，不通知同阶段计数、revision 或 epoch 变化。
 - 最后一个直接 child record 退役时自动归还 parent 责任；Paused 中归还会重新进入 Collecting 并清空旧 epoch。parent 可在 children 退役后再次 fork，继续业务前仍须经过暂停点。
 - `make_branch()` 改为默认关闭的扩展，通过所有翻译单元一致的预处理宏 `PAUSE_ENABLE_INDEPENDENT_BRANCH=1` 启用；默认使用唯一 root 的责任树。

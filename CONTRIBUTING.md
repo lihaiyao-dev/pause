@@ -2,7 +2,8 @@
 
 先阅读[使用指南](docs/user-guide.md)、[设计契约](docs/design.md)和[测试指南](tests/README.md)。
 修改公共接口或并发协议前，请在 Issue 或 PR 中说明具体场景、预期行为、生命周期
-影响和兼容性。安全问题按 [SECURITY.md](SECURITY.md) 处理。
+影响和兼容性。参与讨论、评审和贡献时请遵守[社区行为准则](CODE_OF_CONDUCT.md)。
+安全问题按 [SECURITY.md](SECURITY.md) 处理。
 
 ## 开发环境
 
@@ -25,7 +26,7 @@ ctest --preset msvc-debug
 普通终端可使用 `scripts\msvc-cmake.cmd test all` 自动初始化 MSVC。
 提交前运行 `python scripts/check-repository.py` 检查源码和文档链接；
 不提交生成物、日志、凭据、个人目录和内部服务地址。
-VS Code / Cursor 的扩展推荐、任务和启动入口保存在 `.vscode/`：
+编辑器的扩展推荐、任务和启动入口保存在 `.vscode/`：
 
 1. 安装推荐的 LLDB DAP 扩展，并确保可用的 `lldb-dap` 在 `PATH` 中。
 2. 打开调试面板，选择 **Pause: simple workflow (LLDB DAP)** 并按 F5。

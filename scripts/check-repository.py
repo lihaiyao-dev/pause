@@ -12,6 +12,7 @@ from urllib.parse import unquote, urlsplit
 ROOT = Path(__file__).resolve().parents[1]
 REQUIRED = (
     "README.md", "LICENSE", "CHANGELOG.md", "CONTRIBUTING.md", "SECURITY.md",
+    "CODE_OF_CONDUCT.md",
     "THIRD_PARTY_NOTICES.md", ".editorconfig", ".gitattributes",
     "docs/user-guide.md", "docs/workflows.md", "docs/design.md", "docs/packaging.md",
     "tests/README.md", ".github/workflows/ci.yml",

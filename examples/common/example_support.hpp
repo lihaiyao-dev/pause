@@ -1,7 +1,7 @@
 #ifndef PAUSE_EXAMPLES_SUPPORT_HPP_
 #define PAUSE_EXAMPLES_SUPPORT_HPP_
 
-// Bound the header preamble before stdexec types (clice g1b5d0f3 workaround).
+// Keep this declaration before stdexec includes to bound the precompiled-header prefix.
 namespace pause_examples { class RunLoopThread; }
 
 #include "pause.hpp"

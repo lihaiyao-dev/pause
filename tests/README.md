@@ -64,7 +64,7 @@ ctest --preset msvc-release
 | 实现回归 | `PAUSE_BUILD_TESTS` | 暂停、sender、分支、取消、并发、资源、异常和生命周期 |
 | 工具链检查 | `PAUSE_BUILD_TOOLCHAIN_SMOKE_TEST` | 公共头多翻译单元及 stdexec 编译/运行 |
 | 设计与依赖契约 | `PAUSE_BUILD_DESIGN_TESTS` | 状态模型、stop callback、task affinity 和有限深链 |
-| 命令行示例 | `PAUSE_BUILD_EXAMPLES` | 正常、单步、取消、错误、可选请求和动态任务 |
+| 命令行示例 | `PAUSE_BUILD_EXAMPLES` | 暂停/单步、线程池分支、取消和普通 sender pipeline |
 | 安装管理 | `pause_package_manager` | 所有权、更新/卸载、修改拒绝、路径及事务边界 |
 | 真实包集成 | `packaging/package_integration_test.cmake` | ZIP/TGZ、搬移、离线消费者及随包示例 |
 

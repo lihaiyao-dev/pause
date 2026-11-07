@@ -131,6 +131,7 @@ target_link_libraries(my_app PRIVATE pause::pause)
 | 测试命令与验收范围 | [测试指南](tests/README.md) |
 | 调试器和编辑器 | [开发环境](CONTRIBUTING.md#开发环境) |
 | 发布步骤和产物核验 | [发布指南](CONTRIBUTING.md#发布) |
+| 社区行为与安全问题报告 | [行为准则](CODE_OF_CONDUCT.md)、[安全说明](SECURITY.md) |
 | 贡献规范与变更记录 | [CONTRIBUTING](CONTRIBUTING.md)、[CHANGELOG](CHANGELOG.md) |
 
 ## 许可证
